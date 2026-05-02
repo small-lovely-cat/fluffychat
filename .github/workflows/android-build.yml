@@ -1,0 +1,243 @@
+name: Android Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_mode:
+        description: Build mode
+        required: true
+        default: debug
+        type: choice
+        options:
+          - debug
+          - release
+      upload_to_release:
+        description: Upload artifacts to GitHub Release
+        required: true
+        default: false
+        type: boolean
+      release_tag:
+        description: Release tag (required when upload_to_release=true in manual runs)
+        required: false
+        type: string
+      sign_release:
+        description: Sign release build (requires signing secrets or manual signing inputs)
+        required: true
+        default: false
+        type: boolean
+      manual_keystore_base64:
+        description: Optional one-time keystore (base64). Prefer repository secrets.
+        required: false
+        type: string
+      manual_key_alias:
+        description: Optional key alias for manual keystore
+        required: false
+        type: string
+      manual_key_password:
+        description: Optional key password for manual keystore
+        required: false
+        type: string
+      manual_store_password:
+        description: Optional keystore password for manual keystore
+        required: false
+        type: string
+  push:
+    tags:
+      - "v*"
+      - "android-v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build_android:
+    name: Build Android Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve Flutter version
+        id: flutter_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^  flutter:[[:space:]]*\([^[:space:]]*\).*$/\1/p' .tool_versions.yaml | head -n 1)"
+          if [[ -z "$version" ]]; then
+            echo "Unable to read flutter version from .tool_versions.yaml" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve build parameters
+        id: params
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_BUILD_MODE: ${{ github.event.inputs.build_mode }}
+          INPUT_UPLOAD_TO_RELEASE: ${{ github.event.inputs.upload_to_release }}
+          INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+          INPUT_SIGN_RELEASE: ${{ github.event.inputs.sign_release }}
+          SECRET_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+
+          build_mode="debug"
+          upload_to_release="false"
+          release_tag=""
+          sign_release="false"
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            build_mode="$INPUT_BUILD_MODE"
+            upload_to_release="$INPUT_UPLOAD_TO_RELEASE"
+            release_tag="$INPUT_RELEASE_TAG"
+            sign_release="$INPUT_SIGN_RELEASE"
+            if [[ "$upload_to_release" == "true" && -z "$release_tag" && "$REF" == refs/tags/* ]]; then
+              release_tag="$REF_NAME"
+            fi
+          elif [[ "$EVENT_NAME" == "push" && "$REF" == refs/tags/* ]]; then
+            build_mode="release"
+            upload_to_release="true"
+            release_tag="$REF_NAME"
+            if [[ -n "$SECRET_KEYSTORE_B64" ]]; then
+              sign_release="true"
+            fi
+          fi
+
+          echo "build_mode=$build_mode" >> "$GITHUB_OUTPUT"
+          echo "upload_to_release=$upload_to_release" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "sign_release=$sign_release" >> "$GITHUB_OUTPUT"
+
+      - name: Validate manual release parameters
+        if: steps.params.outputs.upload_to_release == 'true' && steps.params.outputs.release_tag == ''
+        shell: bash
+        run: |
+          echo "release_tag is required when upload_to_release=true for manual runs." >&2
+          exit 1
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.flutter_version.outputs.version }}
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Prepare release signing
+        id: signing
+        if: steps.params.outputs.build_mode == 'release'
+        shell: bash
+        env:
+          WANT_SIGN: ${{ steps.params.outputs.sign_release }}
+          SECRET_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SECRET_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          SECRET_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          SECRET_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          MANUAL_KEYSTORE_B64: ${{ github.event.inputs.manual_keystore_base64 }}
+          MANUAL_KEY_ALIAS: ${{ github.event.inputs.manual_key_alias }}
+          MANUAL_KEY_PASSWORD: ${{ github.event.inputs.manual_key_password }}
+          MANUAL_STORE_PASSWORD: ${{ github.event.inputs.manual_store_password }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$WANT_SIGN" != "true" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "FLUFFYCHAT_UNSIGNED_RELEASE=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          keystore_b64="$SECRET_KEYSTORE_B64"
+          key_alias="$SECRET_KEY_ALIAS"
+          key_password="$SECRET_KEY_PASSWORD"
+          store_password="$SECRET_STORE_PASSWORD"
+
+          if [[ -z "$keystore_b64" ]]; then
+            keystore_b64="$MANUAL_KEYSTORE_B64"
+            key_alias="$MANUAL_KEY_ALIAS"
+            key_password="$MANUAL_KEY_PASSWORD"
+            store_password="$MANUAL_STORE_PASSWORD"
+          fi
+
+          if [[ -z "$keystore_b64" || -z "$key_alias" || -z "$key_password" || -z "$store_password" ]]; then
+            echo "Signing is enabled but signing parameters are incomplete." >&2
+            echo "Provide ANDROID_* secrets or manual_* workflow inputs." >&2
+            exit 1
+          fi
+
+          echo "$keystore_b64" | base64 --decode --ignore-garbage > android/key.jks
+          {
+            echo "storePassword=$store_password"
+            echo "keyPassword=$key_password"
+            echo "keyAlias=$key_alias"
+            echo "storeFile=../key.jks"
+          } > android/key.properties
+          chmod 600 android/key.jks android/key.properties
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build debug APK
+        if: steps.params.outputs.build_mode == 'debug'
+        run: flutter build apk --debug
+
+      - name: Build release artifacts
+        if: steps.params.outputs.build_mode == 'release'
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter build apk --release
+          if [[ "${{ steps.signing.outputs.enabled }}" == "true" ]]; then
+            flutter build appbundle --release
+          fi
+
+      - name: List output files
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -lah build/app/outputs/flutter-apk || true
+          ls -lah build/app/outputs/bundle/release || true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ steps.params.outputs.build_mode }}-${{ github.run_number }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            build/app/outputs/flutter-apk/*.apk
+            build/app/outputs/bundle/release/*.aab
+
+      - name: Upload artifacts to GitHub Release
+        if: steps.params.outputs.upload_to_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.params.outputs.release_tag }}
+          generate_release_notes: true
+          fail_on_unmatched_files: false
+          files: |
+            build/app/outputs/flutter-apk/*.apk
+            build/app/outputs/bundle/release/*.aab
+
+      - name: Cleanup signing files
+        if: always()
+        shell: bash
+        run: rm -f android/key.jks android/key.properties

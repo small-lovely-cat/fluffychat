@@ -68,6 +68,10 @@ android {
             storePassword = keystoreProperties["storePassword"] as String
         }
     }
+    val unsignedRelease =
+        providers.environmentVariable("FLUFFYCHAT_UNSIGNED_RELEASE")
+            .orNull
+            ?.equals("true", ignoreCase = true) == true
 
     defaultConfig {
         applicationId = "chat.fluffy.fluffychat"
@@ -82,7 +86,9 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            if (!unsignedRelease) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
