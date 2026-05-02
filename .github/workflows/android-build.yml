@@ -206,7 +206,7 @@ jobs:
         if: steps.params.outputs.build_mode == 'debug'
         env:
           FLUFFYCHAT_ABI_FILTERS: arm64-v8a
-        run: flutter build apk --debug --no-pub --target-platform android-arm64
+        run: flutter build apk --debug --target-platform android-arm64
 
       - name: Build release artifacts
         if: steps.params.outputs.build_mode == 'release'
@@ -215,9 +215,9 @@ jobs:
           FLUFFYCHAT_ABI_FILTERS: arm64-v8a
         run: |
           set -euo pipefail
-          flutter build apk --release --no-pub --target-platform android-arm64
+          flutter build apk --release --target-platform android-arm64
           if [[ "${{ steps.signing.outputs.enabled }}" == "true" && "${{ steps.params.outputs.build_aab }}" == "true" ]]; then
-            flutter build appbundle --release --no-pub --target-platform android-arm64
+            flutter build appbundle --release --target-platform android-arm64
           fi
 
       - name: List output files
