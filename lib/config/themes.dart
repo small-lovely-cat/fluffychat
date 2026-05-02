@@ -1,6 +1,7 @@
 import 'package:fluffychat/config/app_config.dart';
 import 'package:fluffychat/config/emoji_font.dart';
 import 'package:fluffychat/config/setting_keys.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -45,12 +46,14 @@ abstract class FluffyThemes {
       brightness: brightness,
       seedColor: seed ?? Color(AppSettings.colorSchemeSeedInt.value),
     );
+    final fontFamily = systemUiFontFamily(defaultTargetPlatform);
     final isColumnMode = FluffyThemes.isColumnMode(context);
     return ThemeData(
       visualDensity: VisualDensity.standard,
       useMaterial3: true,
       brightness: brightness,
       colorScheme: colorScheme,
+      fontFamily: fontFamily,
       fontFamilyFallback: kEmojiFontFamilyFallback,
       dividerColor: brightness == Brightness.dark
           ? colorScheme.surfaceContainerHighest
