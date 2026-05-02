@@ -1,5 +1,6 @@
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:fluffychat/config/app_config.dart';
+import 'package:fluffychat/config/emoji_font.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/markdown_context_builder.dart';
@@ -249,7 +250,7 @@ class InputBar extends StatelessWidget {
             dimension: size,
             child: Text(
               suggestion['emoji']!,
-              style: const TextStyle(fontSize: 16),
+              style: kEmojiTextStyle.merge(const TextStyle(fontSize: 16)),
             ),
           ),
           title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),

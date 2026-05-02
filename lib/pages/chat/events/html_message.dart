@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/utils/code_highlight_theme.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/event_checkbox_extension.dart';
 import 'package:fluffychat/widgets/avatar.dart';
 import 'package:fluffychat/widgets/future_loading_dialog.dart';
@@ -137,6 +138,40 @@ class HtmlMessage extends StatelessWidget {
     ];
   }
 
+  InlineSpan _renderLinkifiedText(String text) {
+    final defaultStyle = TextStyle(fontSize: fontSize, color: textColor);
+    final linkifySpan = LinkifySpan(
+      text: text,
+      style: defaultStyle,
+      options: const LinkifyOptions(humanize: false),
+      linkStyle: linkStyle,
+      onOpen: onOpen,
+    );
+
+    final spans = <InlineSpan>[];
+    for (final child in linkifySpan.children ?? const <InlineSpan>[]) {
+      if (child is! TextSpan || child.text == null || child.children != null) {
+        spans.add(child);
+        continue;
+      }
+      spans.addAll(
+        buildEmojiAwareTextSpans(
+          child.text!,
+          textStyle: child.style ?? defaultStyle,
+          recognizer: child.recognizer,
+          mouseCursor: child.mouseCursor,
+          onEnter: child.onEnter,
+          onExit: child.onExit,
+          semanticsLabel: child.semanticsLabel,
+          semanticsIdentifier: child.semanticsIdentifier,
+          locale: child.locale,
+          spellOut: child.spellOut,
+        ),
+      );
+    }
+    return TextSpan(children: spans);
+  }
+
   InlineSpan _renderCodeBlockNode(dom.Node node) {
     if (node is! dom.Element) {
       return TextSpan(text: node.text);
@@ -167,12 +202,7 @@ class HtmlMessage extends StatelessWidget {
       // Single linebreak nodes between Elements are ignored:
       if (text == '\n') text = '';
 
-      return LinkifySpan(
-        text: text,
-        options: const LinkifyOptions(humanize: false),
-        linkStyle: linkStyle,
-        onOpen: onOpen,
-      );
+      return _renderLinkifiedText(text);
     }
 
     switch (node.localName) {

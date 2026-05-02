@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart' show IterableExtension;
 import 'package:fluffychat/config/app_config.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/widgets/avatar.dart';
 import 'package:fluffychat/widgets/future_loading_dialog.dart';
 import 'package:fluffychat/widgets/matrix.dart';
@@ -140,11 +141,16 @@ class _Reaction extends StatelessWidget {
       if (renderKey.length > 10) {
         renderKey = renderKey.getRange(0, 9) + Characters('…');
       }
-      content = Text(
-        renderKey.toString() + (count > 1 ? ' $count' : ''),
-        style: TextStyle(
-          color: theme.colorScheme.onSurface,
-          fontSize: DefaultTextStyle.of(context).style.fontSize,
+      final reactionStyle = TextStyle(
+        color: theme.colorScheme.onSurface,
+        fontSize: DefaultTextStyle.of(context).style.fontSize,
+      );
+      content = Text.rich(
+        TextSpan(
+          children: buildEmojiAwareTextSpans(
+            renderKey.toString() + (count > 1 ? ' $count' : ''),
+            textStyle: reactionStyle,
+          ),
         ),
       );
     }

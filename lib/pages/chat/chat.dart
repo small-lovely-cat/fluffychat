@@ -14,6 +14,7 @@ import 'package:fluffychat/pages/chat/event_info_dialog.dart';
 import 'package:fluffychat/pages/chat/start_poll_bottom_sheet.dart';
 import 'package:fluffychat/pages/chat_details/chat_details.dart';
 import 'package:fluffychat/utils/adaptive_bottom_sheet.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/emoji/latest_emoji_set.dart';
 import 'package:fluffychat/utils/error_reporter.dart';
 import 'package:fluffychat/utils/file_selector.dart';
@@ -564,7 +565,7 @@ class ChatController extends State<ChatPageWithRoom>
     super.dispose();
   }
 
-  TextEditingController sendController = TextEditingController();
+  TextEditingController sendController = EmojiAwareTextEditingController();
 
   void setSendingClient(Client c) {
     // first cancel typing with the old sending client
