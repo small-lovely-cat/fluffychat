@@ -164,10 +164,6 @@ jobs:
           SECRET_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           SECRET_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           SECRET_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-          MANUAL_KEYSTORE_B64: ${{ github.event.inputs.manual_keystore_base64 }}
-          MANUAL_KEY_ALIAS: ${{ github.event.inputs.manual_key_alias }}
-          MANUAL_KEY_PASSWORD: ${{ github.event.inputs.manual_key_password }}
-          MANUAL_STORE_PASSWORD: ${{ github.event.inputs.manual_store_password }}
         run: |
           set -euo pipefail
 
@@ -183,10 +179,11 @@ jobs:
           store_password="$SECRET_STORE_PASSWORD"
 
           if [[ -z "$keystore_b64" ]]; then
-            keystore_b64="$MANUAL_KEYSTORE_B64"
-            key_alias="$MANUAL_KEY_ALIAS"
-            key_password="$MANUAL_KEY_PASSWORD"
-            store_password="$MANUAL_STORE_PASSWORD"
+            # Read manual inputs from event payload to avoid printing them in step env.
+            keystore_b64="$(jq -r '.inputs.manual_keystore_base64 // ""' "$GITHUB_EVENT_PATH")"
+            key_alias="$(jq -r '.inputs.manual_key_alias // ""' "$GITHUB_EVENT_PATH")"
+            key_password="$(jq -r '.inputs.manual_key_password // ""' "$GITHUB_EVENT_PATH")"
+            store_password="$(jq -r '.inputs.manual_store_password // ""' "$GITHUB_EVENT_PATH")"
           fi
 
           if [[ -z "$keystore_b64" || -z "$key_alias" || -z "$key_password" || -z "$store_password" ]]; then
@@ -209,7 +206,7 @@ jobs:
         if: steps.params.outputs.build_mode == 'debug'
         env:
           FLUFFYCHAT_ABI_FILTERS: arm64-v8a
-        run: flutter build apk --debug --no-pub --target-platform android-arm64 --split-per-abi
+        run: flutter build apk --debug --no-pub --target-platform android-arm64
 
       - name: Build release artifacts
         if: steps.params.outputs.build_mode == 'release'
@@ -218,7 +215,7 @@ jobs:
           FLUFFYCHAT_ABI_FILTERS: arm64-v8a
         run: |
           set -euo pipefail
-          flutter build apk --release --no-pub --target-platform android-arm64 --split-per-abi
+          flutter build apk --release --no-pub --target-platform android-arm64
           if [[ "${{ steps.signing.outputs.enabled }}" == "true" && "${{ steps.params.outputs.build_aab }}" == "true" ]]; then
             flutter build appbundle --release --no-pub --target-platform android-arm64
           fi
