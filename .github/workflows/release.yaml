@@ -106,6 +106,37 @@ jobs:
           asset_name: fluffychat.apk
           asset_content_type: application/vnd.android.package-archive
 
+  build_macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .tool_versions.yaml
+          cache: true
+      - name: Use Xcode 16.4
+        run: sudo xcode-select --switch /Applications/Xcode_16.4.app
+      - run: brew install sqlcipher
+      - uses: moonrepo/setup-rust@v1
+      - name: Build macOS app with Xcode
+        run: bash ./scripts/build-macos-ci.sh
+      - name: Package macOS app
+        run: bash ./scripts/package-macos-app.sh
+      - name: Upload macOS build
+        uses: actions/upload-artifact@v7
+        with:
+          name: macOS Build
+          path: build/macos/FluffyChat-macos.zip
+      - name: Upload to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: build/macos/FluffyChat-macos.zip
+          asset_name: fluffychat-macos.zip
+          asset_content_type: application/zip
+
   build_linux:
     strategy:
       matrix:
