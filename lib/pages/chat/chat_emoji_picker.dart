@@ -3,6 +3,7 @@ import 'package:fluffychat/config/emoji_font.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/chat/sticker_picker_dialog.dart';
+import 'package:fluffychat/utils/emoji/latest_emoji_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
 
@@ -43,6 +44,7 @@ class ChatEmojiPicker extends StatelessWidget {
                           config: Config(
                             locale: Localizations.localeOf(context),
                             checkPlatformCompatibility: false,
+                            emojiSet: getLatestEmojiLocale,
                             emojiTextStyle: kEmojiTextStyle,
                             emojiViewConfig: EmojiViewConfig(
                               noRecents: const NoRecent(),
