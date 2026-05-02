@@ -25,6 +25,11 @@ on:
         required: true
         default: false
         type: boolean
+      build_aab:
+        description: Also build release AAB (requires signed release)
+        required: true
+        default: false
+        type: boolean
       manual_keystore_base64:
         description: Optional one-time keystore (base64). Prefer repository secrets.
         required: false
@@ -86,6 +91,7 @@ jobs:
           INPUT_UPLOAD_TO_RELEASE: ${{ github.event.inputs.upload_to_release }}
           INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
           INPUT_SIGN_RELEASE: ${{ github.event.inputs.sign_release }}
+          INPUT_BUILD_AAB: ${{ github.event.inputs.build_aab }}
           SECRET_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           set -euo pipefail
@@ -94,12 +100,14 @@ jobs:
           upload_to_release="false"
           release_tag=""
           sign_release="false"
+          build_aab="false"
 
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             build_mode="$INPUT_BUILD_MODE"
             upload_to_release="$INPUT_UPLOAD_TO_RELEASE"
             release_tag="$INPUT_RELEASE_TAG"
             sign_release="$INPUT_SIGN_RELEASE"
+            build_aab="$INPUT_BUILD_AAB"
             if [[ "$upload_to_release" == "true" && -z "$release_tag" && "$REF" == refs/tags/* ]]; then
               release_tag="$REF_NAME"
             fi
@@ -116,6 +124,7 @@ jobs:
           echo "upload_to_release=$upload_to_release" >> "$GITHUB_OUTPUT"
           echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
           echo "sign_release=$sign_release" >> "$GITHUB_OUTPUT"
+          echo "build_aab=$build_aab" >> "$GITHUB_OUTPUT"
 
       - name: Validate manual release parameters
         if: steps.params.outputs.upload_to_release == 'true' && steps.params.outputs.release_tag == ''
@@ -133,7 +142,8 @@ jobs:
       - name: Setup Gradle cache
         uses: gradle/actions/setup-gradle@v4
         with:
-          cache-read-only: false
+          # Keep writeback on main only, avoid heavy cache uploads on tags/feature branches.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -197,16 +207,20 @@ jobs:
 
       - name: Build debug APK
         if: steps.params.outputs.build_mode == 'debug'
-        run: flutter build apk --debug
+        env:
+          FLUFFYCHAT_ABI_FILTERS: arm64-v8a
+        run: flutter build apk --debug --no-pub --target-platform android-arm64 --split-per-abi
 
       - name: Build release artifacts
         if: steps.params.outputs.build_mode == 'release'
         shell: bash
+        env:
+          FLUFFYCHAT_ABI_FILTERS: arm64-v8a
         run: |
           set -euo pipefail
-          flutter build apk --release
-          if [[ "${{ steps.signing.outputs.enabled }}" == "true" ]]; then
-            flutter build appbundle --release
+          flutter build apk --release --no-pub --target-platform android-arm64 --split-per-abi
+          if [[ "${{ steps.signing.outputs.enabled }}" == "true" && "${{ steps.params.outputs.build_aab }}" == "true" ]]; then
+            flutter build appbundle --release --no-pub --target-platform android-arm64
           fi
 
       - name: List output files
@@ -219,7 +233,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: android-${{ steps.params.outputs.build_mode }}-${{ github.run_number }}
+          name: android-${{ steps.params.outputs.build_mode }}-arm64-${{ github.run_number }}
           if-no-files-found: error
           retention-days: 14
           path: |

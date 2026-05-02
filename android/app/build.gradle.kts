@@ -72,6 +72,12 @@ android {
         providers.environmentVariable("FLUFFYCHAT_UNSIGNED_RELEASE")
             .orNull
             ?.equals("true", ignoreCase = true) == true
+    val configuredAbiFilters =
+        providers.environmentVariable("FLUFFYCHAT_ABI_FILTERS")
+            .orNull
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
 
     defaultConfig {
         applicationId = "chat.fluffy.fluffychat"
@@ -80,7 +86,8 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         ndk { // Workaround for https://github.com/flutter/flutter/issues/162153#issuecomment-2612443642
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86")
+            val defaultAbiFilters = listOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86")
+            abiFilters += configuredAbiFilters ?: defaultAbiFilters
         }
     }
 
