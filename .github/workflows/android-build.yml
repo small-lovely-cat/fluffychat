@@ -61,7 +61,7 @@ concurrency:
 jobs:
   build_android:
     name: Build Android Artifacts
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 60
 
     steps:
