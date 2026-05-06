@@ -194,7 +194,7 @@ class AppLockAuthChannel private constructor(
             .build()
 
         SoterWrapperApi.requestAuthorizeAndSign(
-            object : SoterProcessCallback<SoterProcessAuthenticationResult>() {
+            object : SoterProcessCallback<SoterProcessAuthenticationResult> {
                 override fun onResult(result: SoterProcessAuthenticationResult) {
                     if (result.isSuccess()) {
                         finishPending(successPayload())
@@ -234,7 +234,7 @@ class AppLockAuthChannel private constructor(
 
     private fun prepareSoterInternal(onComplete: (Boolean, String?) -> Unit) {
         SoterWrapperApi.prepareAuthKey(
-            object : SoterProcessCallback<SoterProcessKeyPreparationResult>() {
+            object : SoterProcessCallback<SoterProcessKeyPreparationResult> {
                 override fun onResult(result: SoterProcessKeyPreparationResult) {
                     onComplete(result.isSuccess(), result.errMsg)
                 }
@@ -263,7 +263,7 @@ class AppLockAuthChannel private constructor(
 
         SoterWrapperApi.init(
             activity.applicationContext,
-            object : SoterProcessCallback<SoterProcessNoExtResult>() {
+            object : SoterProcessCallback<SoterProcessNoExtResult> {
                 override fun onResult(result: SoterProcessNoExtResult) {
                     val initialized = result.isSuccess() ||
                         result.errCode == SoterProcessErrCode.ERR_ALREADY_INITIALIZED
