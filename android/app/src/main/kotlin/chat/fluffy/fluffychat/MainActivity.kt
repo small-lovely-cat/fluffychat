@@ -1,27 +1,26 @@
 package chat.fluffy.fluffychat
 
-import io.flutter.embedding.android.FlutterActivity
+import android.content.Context
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 
-import android.content.Context
-
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
     }
-
 
     override fun provideFlutterEngine(context: Context): FlutterEngine? {
         return provideEngine(this)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        // do nothing, because the engine was been configured in provideEngine
+        AppLockAuthChannel.attach(this, flutterEngine)
     }
 
     companion object {
         var engine: FlutterEngine? = null
+
         fun provideEngine(context: Context): FlutterEngine {
             val eng = engine ?: FlutterEngine(context, emptyArray(), true, false)
             engine = eng

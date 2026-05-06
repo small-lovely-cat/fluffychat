@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/utils/app_lock_biometric_service.dart';
+import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:fluffychat/widgets/app_lock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,7 +19,23 @@ class _LockScreenState extends State<LockScreen> {
   String? _errorText;
   int _coolDownSeconds = 5;
   bool _inputBlocked = false;
+  bool _biometricInProgress = false;
+  bool _autoPromptedBiometric = false;
   final TextEditingController _textEditingController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_tryBiometricUnlock(autoPrompt: true));
+    });
+  }
+
+  @override
+  void dispose() {
+    _textEditingController.dispose();
+    super.dispose();
+  }
 
   Future<void> tryUnlock(String text) async {
     text = text.trim();
@@ -58,8 +76,67 @@ class _LockScreenState extends State<LockScreen> {
     _textEditingController.clear();
   }
 
+  Future<void> _tryBiometricUnlock({
+    bool autoPrompt = false,
+    AppLockAuthMethod? method,
+  }) async {
+    final appLock = AppLock.of(context);
+    final unlockMethod = method ?? appLock.authMethod;
+    if (!appLock.canUseBiometricUnlock ||
+        !unlockMethod.isBiometric ||
+        _inputBlocked ||
+        _biometricInProgress) {
+      return;
+    }
+    if (autoPrompt && _autoPromptedBiometric) return;
+    if (autoPrompt) {
+      _autoPromptedBiometric = true;
+    }
+    setState(() {
+      _errorText = null;
+      _biometricInProgress = true;
+    });
+    final result = await appLock.unlockWithBiometric(
+      method: unlockMethod,
+      title: L10n.of(context).appLock,
+      subtitle: L10n.of(context).unlockWithBiometric,
+      negativeButton: L10n.of(context).pleaseEnterYourPin,
+    );
+    if (!mounted) return;
+    setState(() {
+      _biometricInProgress = false;
+    });
+    if (result.success || result.cancelled) return;
+
+    if (unlockMethod == AppLockAuthMethod.soter &&
+        result.shouldFallbackToNative) {
+      final useSystemBiometric = await showOkCancelAlertDialog(
+        useRootNavigator: false,
+        context: context,
+        title: L10n.of(context).useAndroidBiometric,
+        message:
+            result.message ??
+            L10n.of(context).soterUnavailableUseSystemBiometric,
+        okLabel: L10n.of(context).useAndroidBiometric,
+        cancelLabel: L10n.of(context).cancel,
+      );
+      if (useSystemBiometric == OkCancelResult.ok) {
+        await appLock.changeAuthMethod(AppLockAuthMethod.systemBiometric);
+        if (!mounted) return;
+        await _tryBiometricUnlock(method: AppLockAuthMethod.systemBiometric);
+      }
+      return;
+    }
+
+    setState(() {
+      _errorText =
+          result.message ?? L10n.of(context).biometricAuthenticationFailed;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final appLock = AppLock.of(context);
     return ScaffoldMessenger(
       child: Scaffold(
         appBar: AppBar(
@@ -97,11 +174,24 @@ class _LockScreenState extends State<LockScreen> {
                       hintText: '****',
                       suffix: IconButton(
                         icon: const Icon(Icons.lock_open_outlined),
-                        onPressed: () => tryUnlock(_textEditingController.text),
+                        onPressed: _inputBlocked
+                            ? null
+                            : () => tryUnlock(_textEditingController.text),
                       ),
                     ),
                   ),
-                  if (_inputBlocked)
+                  if (appLock.canUseBiometricUnlock)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12.0),
+                      child: FilledButton.icon(
+                        onPressed: _inputBlocked || _biometricInProgress
+                            ? null
+                            : _tryBiometricUnlock,
+                        icon: const Icon(Icons.fingerprint_outlined),
+                        label: Text(L10n.of(context).unlockWithBiometric),
+                      ),
+                    ),
+                  if (_inputBlocked || _biometricInProgress)
                     const Padding(
                       padding: EdgeInsets.all(8.0),
                       child: LinearProgressIndicator(),

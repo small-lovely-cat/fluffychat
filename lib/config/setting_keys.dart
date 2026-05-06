@@ -73,7 +73,8 @@ enum AppSettings<T> {
   lastSeenSupportBanner<int>('chat.fluffy.last_seen_support_banner', 0),
   supportBannerOptOut<bool>('chat.fluffy.support_banner_opt_out', false),
   webNotificationSound<bool>('chat.fluffy.web_notification_sound', true),
-  chatFilter<String>('chat.fluffy.chat_filter', 'allChats');
+  chatFilter<String>('chat.fluffy.chat_filter', 'allChats'),
+  appLockAuthMethod<String>('chat.fluffy.app_lock_auth_method', 'pin');
 
   final String key;
   final T defaultValue;

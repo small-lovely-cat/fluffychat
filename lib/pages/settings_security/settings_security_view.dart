@@ -85,7 +85,7 @@ class SettingsSecurityView extends StatelessWidget {
                       ListTile(
                         trailing: const Icon(Icons.chevron_right_outlined),
                         title: Text(L10n.of(context).appLock),
-                        subtitle: Text(L10n.of(context).appLockDescription),
+                        subtitle: Text(controller.appLockSubtitle(context)),
                         onTap: controller.setAppLockAction,
                       ),
                   },

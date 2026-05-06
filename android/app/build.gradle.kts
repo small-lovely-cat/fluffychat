@@ -15,6 +15,8 @@ if (file("google-services.json").exists()) {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4") // For flutter_local_notifications // Workaround for: https://github.com/MaikuB/flutter_local_notifications/issues/2286
     implementation("androidx.core:core-ktx:1.17.0") // For Android Auto
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("com.github.Tencent.soter:soter-wrapper:2.0.7")
 }
 
 
