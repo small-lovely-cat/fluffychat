@@ -1,6 +1,7 @@
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -46,8 +47,17 @@ class StateMessage extends StatelessWidget {
                         TextSpan(
                           children: [
                             TextSpan(
-                              text: event.calcLocalizedBodyFallback(
-                                MatrixLocals(L10n.of(context)),
+                              children: buildEmojiAwareTextSpans(
+                                event.calcLocalizedBodyFallback(
+                                  MatrixLocals(L10n.of(context)),
+                                ),
+                                textStyle: TextStyle(
+                                  fontSize:
+                                      11 * AppSettings.fontSizeFactor.value,
+                                  decoration: event.redacted
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
                               ),
                             ),
                             if (onExpand != null) ...[

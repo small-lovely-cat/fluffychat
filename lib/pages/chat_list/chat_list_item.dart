@@ -1,6 +1,7 @@
 import 'package:fluffychat/config/app_config.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/chat_list/unread_bubble.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:fluffychat/utils/room_status_extension.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
@@ -178,7 +179,7 @@ class ChatListItem extends StatelessWidget {
               title: Row(
                 children: <Widget>[
                   Expanded(
-                    child: Text(
+                    child: EmojiAwareText(
                       displayname,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -300,7 +301,7 @@ class ChatListItem extends StatelessWidget {
                             ).countChats(room.spaceChildren.length),
                           )
                         : typingText.isNotEmpty
-                        ? Text(
+                        ? EmojiAwareText(
                             typingText,
                             style: TextStyle(color: theme.colorScheme.primary),
                             maxLines: 1,
@@ -334,7 +335,7 @@ class ChatListItem extends StatelessWidget {
                                   directChatMatrixId !=
                                       room.lastEvent?.senderId),
                             ),
-                            builder: (context, snapshot) => Text(
+                            builder: (context, snapshot) => EmojiAwareText(
                               room.membership == Membership.invite
                                   ? room
                                             .getState(

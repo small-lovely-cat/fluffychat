@@ -1,4 +1,5 @@
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
@@ -62,7 +63,7 @@ class _EditContent extends StatelessWidget {
       children: <Widget>[
         Icon(Icons.edit, color: theme.colorScheme.primary),
         Container(width: 15.0),
-        Text(
+        EmojiAwareText(
           event.calcLocalizedBodyFallback(
             MatrixLocals(L10n.of(context)),
             withSenderNamePrefix: false,

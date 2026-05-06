@@ -2,11 +2,12 @@ import 'package:async/async.dart';
 import 'package:fluffychat/config/app_config.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/url_launcher.dart';
 import 'package:fluffychat/widgets/avatar.dart';
 import 'package:fluffychat/widgets/future_loading_dialog.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:flutter_linkify/flutter_linkify.dart' show LinkifyOptions;
 import 'package:matrix/matrix.dart' hide Result;
 
 class PollWidget extends StatelessWidget {
@@ -68,7 +69,7 @@ class PollWidget extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Linkify(
+            child: EmojiAwareLinkify(
               text: eventContent.pollStartContent.question.mText,
               textScaleFactor: MediaQuery.textScalerOf(context).scale(1),
               style: TextStyle(
@@ -114,7 +115,7 @@ class PollWidget extends StatelessWidget {
                         answer.id,
                         eventContent.pollStartContent.maxSelections,
                       ),
-                title: Text(
+                title: EmojiAwareText(
                   answer.mText,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

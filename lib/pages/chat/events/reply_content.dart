@@ -1,5 +1,6 @@
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
@@ -63,7 +64,7 @@ class ReplyContent extends StatelessWidget {
                   initialData: displayEvent.senderFromMemoryOrFallback,
                   future: displayEvent.fetchSenderUser(),
                   builder: (context, snapshot) {
-                    return Text(
+                    return EmojiAwareText(
                       '${snapshot.data?.calcDisplayname() ?? displayEvent.senderFromMemoryOrFallback.calcDisplayname()}:',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -75,7 +76,7 @@ class ReplyContent extends StatelessWidget {
                     );
                   },
                 ),
-                Text(
+                EmojiAwareText(
                   displayEvent.calcLocalizedBodyFallback(
                     MatrixLocals(L10n.of(context)),
                     withSenderNamePrefix: false,

@@ -5,6 +5,7 @@ import 'package:cross_file/cross_file.dart';
 import 'package:fluffychat/config/app_config.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/chat_list/chat_list_view.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/localized_exception_extension.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:fluffychat/utils/platform_infos.dart';
@@ -549,7 +550,11 @@ class ChatListController extends State<ChatList>
               Avatar(mxContent: room.avatar, name: displayname, size: 24),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 200),
-                child: Text(displayname, maxLines: 1, overflow: .ellipsis),
+                child: EmojiAwareText(
+                  displayname,
+                  maxLines: 1,
+                  overflow: .ellipsis,
+                ),
               ),
             ],
           ),

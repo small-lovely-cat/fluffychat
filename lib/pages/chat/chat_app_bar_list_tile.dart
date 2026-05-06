@@ -1,6 +1,7 @@
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/url_launcher.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:flutter_linkify/flutter_linkify.dart' show LinkifyOptions;
 
 class ChatAppBarListTile extends StatelessWidget {
   final Widget? leading;
@@ -33,9 +34,9 @@ class ChatAppBarListTile extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: Linkify(
+                child: EmojiAwareLinkify(
                   text: title,
-                  textScaleFactor: MediaQuery.textScalerOf(context).scale(1),
+                  textScaler: MediaQuery.textScalerOf(context),
                   options: const LinkifyOptions(humanize: false),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

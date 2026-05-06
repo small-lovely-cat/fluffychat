@@ -7,6 +7,7 @@ import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/adaptive_bottom_sheet.dart';
 import 'package:fluffychat/utils/date_time_extension.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/emoji/latest_emoji_locale.dart';
 import 'package:fluffychat/utils/file_description.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
@@ -415,7 +416,7 @@ class Message extends StatelessWidget {
                                                       snapshot.data
                                                           ?.calcDisplayname() ??
                                                       sender.calcDisplayname();
-                                                  return Text(
+                                                  return EmojiAwareText(
                                                     displayname,
                                                     style: TextStyle(
                                                       fontSize: 11,
@@ -658,7 +659,7 @@ class Message extends StatelessWidget {
                                                                   )
                                                               ? 0.33
                                                               : 1,
-                                                          child: Text(
+                                                          child: EmojiAwareText(
                                                             emoji,
                                                             style:
                                                                 const TextStyle(
@@ -861,7 +862,7 @@ class Message extends StatelessWidget {
                                 ),
                                 onPressed: () => enterThread(event.eventId),
                                 icon: const Icon(Icons.message),
-                                label: Text(
+                                label: EmojiAwareText(
                                   '${L10n.of(context).countReplies(threadChildren.length)} | ${threadChildren.first.calcLocalizedBodyFallback(MatrixLocals(L10n.of(context)), withSenderNamePrefix: true)}',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,

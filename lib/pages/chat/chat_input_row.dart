@@ -2,6 +2,7 @@ import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/chat/recording_input_row.dart';
 import 'package:fluffychat/pages/chat/recording_view_model.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/emoji/latest_emoji_locale.dart';
 import 'package:fluffychat/utils/other_party_can_receive.dart';
 import 'package:fluffychat/utils/platform_infos.dart';
@@ -438,7 +439,9 @@ class _ChatAccountPicker extends StatelessWidget {
                             client.userID!.localpart,
                         size: 20,
                       ),
-                      title: Text(snapshot.data?.displayName ?? client.userID!),
+                      title: EmojiAwareText(
+                        snapshot.data?.displayName ?? client.userID!,
+                      ),
                       contentPadding: const EdgeInsets.all(0),
                     ),
                   ),

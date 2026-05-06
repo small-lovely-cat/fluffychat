@@ -7,6 +7,7 @@ import 'package:fluffychat/pages/chat/events/video_player.dart';
 import 'package:fluffychat/pages/image_viewer/image_viewer.dart';
 import 'package:fluffychat/utils/adaptive_bottom_sheet.dart';
 import 'package:fluffychat/utils/date_time_extension.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:fluffychat/widgets/avatar.dart';
 import 'package:fluffychat/widgets/matrix.dart';
@@ -53,7 +54,9 @@ class MessageContent extends StatelessWidget {
     if (event.content['can_request_session'] != true) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(event.calcLocalizedBodyFallback(MatrixLocals(l10n))),
+          content: EmojiAwareText(
+            event.calcLocalizedBodyFallback(MatrixLocals(l10n)),
+          ),
         ),
       );
       return;
@@ -90,12 +93,14 @@ class MessageContent extends StatelessWidget {
                   presenceUserId: sender.stateKey,
                   client: event.room.client,
                 ),
-                title: Text(sender.calcDisplayname()),
+                title: EmojiAwareText(sender.calcDisplayname()),
                 subtitle: Text(event.originServerTs.localizedTime(context)),
                 trailing: const Icon(Icons.lock_outlined),
               ),
               const Divider(),
-              Text(event.calcLocalizedBodyFallback(MatrixLocals(l10n))),
+              EmojiAwareText(
+                event.calcLocalizedBodyFallback(MatrixLocals(l10n)),
+              ),
             ],
           ),
         ),

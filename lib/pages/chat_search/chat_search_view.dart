@@ -4,6 +4,7 @@ import 'package:fluffychat/pages/chat_search/chat_search_files_tab.dart';
 import 'package:fluffychat/pages/chat_search/chat_search_images_tab.dart';
 import 'package:fluffychat/pages/chat_search/chat_search_message_tab.dart';
 import 'package:fluffychat/pages/chat_search/chat_search_page.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_locals.dart';
 import 'package:fluffychat/widgets/layouts/max_width_body.dart';
 import 'package:flutter/material.dart';
@@ -34,7 +35,7 @@ class ChatSearchView extends StatelessWidget {
       appBar: AppBar(
         leading: const Center(child: BackButton()),
         titleSpacing: 0,
-        title: Text(
+        title: EmojiAwareText(
           L10n.of(context).searchIn(
             room.getLocalizedDisplayname(MatrixLocals(L10n.of(context))),
           ),

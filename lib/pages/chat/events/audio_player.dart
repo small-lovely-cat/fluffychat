@@ -4,13 +4,14 @@ import 'dart:io';
 import 'package:async/async.dart';
 import 'package:fluffychat/config/app_config.dart';
 import 'package:fluffychat/config/themes.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/error_reporter.dart';
 import 'package:fluffychat/utils/file_description.dart';
 import 'package:fluffychat/utils/localized_exception_extension.dart';
 import 'package:fluffychat/utils/url_launcher.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_linkify/flutter_linkify.dart';
+import 'package:flutter_linkify/flutter_linkify.dart' show LinkifyOptions;
 import 'package:just_audio/just_audio.dart';
 import 'package:matrix/matrix.dart';
 import 'package:opus_caf_converter_dart/opus_caf_converter_dart.dart';
@@ -485,7 +486,7 @@ class AudioPlayerState extends State<AudioPlayerWidget> {
                         horizontal: 16,
                         vertical: 8,
                       ),
-                      child: Linkify(
+                      child: EmojiAwareLinkify(
                         text: fileDescription,
                         textScaleFactor: MediaQuery.textScalerOf(
                           context,

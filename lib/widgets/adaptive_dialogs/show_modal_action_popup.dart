@@ -1,3 +1,4 @@
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -32,15 +33,15 @@ Future<T?> showModalActionPopup<T>({
               ListTile(
                 title: title == null
                     ? null
-                    : Text(title, style: theme.textTheme.labelSmall),
-                subtitle: message == null ? null : Text(message),
+                    : EmojiAwareText(title, style: theme.textTheme.labelSmall),
+                subtitle: message == null ? null : EmojiAwareText(message),
               ),
               const Divider(height: 1),
             ],
             ...actions.map(
               (action) => ListTile(
                 leading: action.icon,
-                title: Text(
+                title: EmojiAwareText(
                   action.label,
                   maxLines: 1,
                   style: action.isDestructive
@@ -58,7 +59,7 @@ Future<T?> showModalActionPopup<T>({
             if (cancelLabel != null) ...[
               const Divider(height: 1),
               ListTile(
-                title: Text(cancelLabel),
+                title: EmojiAwareText(cancelLabel),
                 onTap: () => Navigator.of(context).pop(null),
               ),
             ],
@@ -73,13 +74,13 @@ Future<T?> showModalActionPopup<T>({
         builder: (context) => ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 512),
           child: CupertinoActionSheet(
-            title: title == null ? null : Text(title),
-            message: message == null ? null : Text(message),
+            title: title == null ? null : EmojiAwareText(title),
+            message: message == null ? null : EmojiAwareText(message),
             cancelButton: cancelLabel == null
                 ? null
                 : CupertinoActionSheetAction(
                     onPressed: () => Navigator.of(context).pop(null),
-                    child: Text(cancelLabel),
+                    child: EmojiAwareText(cancelLabel),
                   ),
             actions: actions
                 .map(
@@ -87,7 +88,7 @@ Future<T?> showModalActionPopup<T>({
                     isDestructiveAction: action.isDestructive,
                     isDefaultAction: action.isDefaultAction,
                     onPressed: () => Navigator.of(context).pop<T>(action.value),
-                    child: Text(action.label, maxLines: 1),
+                    child: EmojiAwareText(action.label, maxLines: 1),
                   ),
                 )
                 .toList(),

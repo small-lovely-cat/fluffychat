@@ -3,6 +3,7 @@ import 'package:fluffychat/config/app_config.dart';
 import 'package:fluffychat/config/emoji_font.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/markdown_context_builder.dart';
 import 'package:fluffychat/widgets/mxc_image.dart';
 import 'package:flutter/material.dart';
@@ -253,7 +254,11 @@ class InputBar extends StatelessWidget {
               style: kEmojiTextStyle.merge(const TextStyle(fontSize: 16)),
             ),
           ),
-          title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+          title: EmojiAwareText(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       );
     }
@@ -273,7 +278,7 @@ class InputBar extends StatelessWidget {
         title: Row(
           crossAxisAlignment: .center,
           children: <Widget>[
-            Text(suggestion['name']!),
+            EmojiAwareText(suggestion['name']!),
             Expanded(
               child: Align(
                 alignment: Alignment.centerRight,
@@ -288,7 +293,7 @@ class InputBar extends StatelessWidget {
                           size: size * 0.9,
                           client: client,
                         )
-                      : Text(suggestion['pack_display_name']!),
+                      : EmojiAwareText(suggestion['pack_display_name']!),
                 ),
               ),
             ),
@@ -308,7 +313,7 @@ class InputBar extends StatelessWidget {
           size: size,
           client: client,
         ),
-        title: Text(suggestion['displayname'] ?? suggestion['mxid']!),
+        title: EmojiAwareText(suggestion['displayname'] ?? suggestion['mxid']!),
       );
     }
     return const SizedBox.shrink();

@@ -139,42 +139,18 @@ class HtmlMessage extends StatelessWidget {
   }
 
   InlineSpan _renderLinkifiedText(String text) {
-    final defaultStyle = TextStyle(fontSize: fontSize, color: textColor);
-    final linkifySpan = LinkifySpan(
+    return buildEmojiAwareLinkifySpan(
       text: text,
-      style: defaultStyle,
+      textStyle: TextStyle(fontSize: fontSize, color: textColor),
       options: const LinkifyOptions(humanize: false),
       linkStyle: linkStyle,
       onOpen: onOpen,
     );
-
-    final spans = <InlineSpan>[];
-    for (final child in linkifySpan.children ?? const <InlineSpan>[]) {
-      if (child is! TextSpan || child.text == null || child.children != null) {
-        spans.add(child);
-        continue;
-      }
-      spans.addAll(
-        buildEmojiAwareTextSpans(
-          child.text!,
-          textStyle: child.style ?? defaultStyle,
-          recognizer: child.recognizer,
-          mouseCursor: child.mouseCursor,
-          onEnter: child.onEnter,
-          onExit: child.onExit,
-          semanticsLabel: child.semanticsLabel,
-          semanticsIdentifier: child.semanticsIdentifier,
-          locale: child.locale,
-          spellOut: child.spellOut,
-        ),
-      );
-    }
-    return TextSpan(children: spans);
   }
 
   InlineSpan _renderCodeBlockNode(dom.Node node) {
     if (node is! dom.Element) {
-      return TextSpan(text: node.text);
+      return TextSpan(children: buildEmojiAwareTextSpans(node.text ?? ''));
     }
     final style =
         atomOneDarkTheme[node.className.split('-').last] ??
@@ -407,7 +383,12 @@ class HtmlMessage extends StatelessWidget {
       case 'img':
         final mxcUrl = Uri.tryParse(node.attributes['src'] ?? '');
         if (mxcUrl == null || mxcUrl.scheme != 'mxc') {
-          return TextSpan(text: node.attributes['alt']);
+          return TextSpan(
+            children: buildEmojiAwareTextSpans(
+              node.attributes['alt'] ?? '',
+              textStyle: TextStyle(fontSize: fontSize, color: textColor),
+            ),
+          );
         }
 
         final width = double.tryParse(node.attributes['width'] ?? '');
@@ -587,13 +568,15 @@ class MatrixPill extends StatelessWidget {
               ),
             ),
             TextSpan(
-              text: name,
-              style: TextStyle(
-                color: color,
-                decorationColor: color,
-                decoration: TextDecoration.underline,
-                fontSize: fontSize,
-                height: 1.25,
+              children: buildEmojiAwareTextSpans(
+                name,
+                textStyle: TextStyle(
+                  color: color,
+                  decorationColor: color,
+                  decoration: TextDecoration.underline,
+                  fontSize: fontSize,
+                  height: 1.25,
+                ),
               ),
             ),
           ],

@@ -221,13 +221,13 @@ class _AdaptableReactorsDialog extends StatelessWidget {
                 client: client,
                 presenceUserId: reactor.stateKey,
               ),
-              label: Text(reactor.displayName!),
+              label: EmojiAwareText(reactor.displayName!),
             ),
         ],
       ),
     );
 
-    final title = Center(child: Text(reactionEntry!.key));
+    final title = Center(child: EmojiAwareText(reactionEntry!.key));
 
     return AlertDialog.adaptive(title: title, content: body);
   }
