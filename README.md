@@ -89,21 +89,19 @@ flutter build web --release
   **Please only the values, you really need**. If you e.g. only want
   to change the default homeserver, then only modify the `defaultHomeserver` key.
 
-#### GitHub Actions web release
+#### GitHub Actions Web 发布
 
-The `Web Build` workflow uses the `web-build` environment and publishes a packaged `build/web`
-bundle to GitHub Releases.
+`Web Build` 工作流使用 `web-build` environment，并将打包后的 `build/web`
+产物发布到 GitHub Releases。
 
-Optional `web-build` environment secrets:
+可选的 `web-build` environment secrets：
 
-- `WEB_BUILD_CONFIG_JSON`: Raw `config.json` contents written during CI and copied into `build/web/config.json`.
-- `WEB_BUILD_RELEASE_TAG`: Default release tag for manual workflow runs when no input override is provided.
-- `WEB_BUILD_RELEASE_NAME`: Default release name for manual workflow runs when no input override is provided.
-- `WEB_BUILD_BASE_HREF`: Optional `flutter build web --base-href` value.
-- `WEB_BUILD_CANVASKIT_URL`: Optional override for `FLUTTER_WEB_CANVASKIT_URL`. Defaults to `canvaskit/`.
-- `WEB_BUILD_PWA_STRATEGY`: Optional `flutter build web --pwa-strategy` value.
-- `WEB_BUILD_DART_DEFINES`: Optional newline-separated `KEY=VALUE` entries passed as `--dart-define`.
-- `WEB_BUILD_EXTRA_ARGS`: Optional extra `flutter build web` arguments.
+- `WEB_BUILD_CONFIG_JSON`：CI 中写入的原始 `config.json` 内容，随后会复制到 `build/web/config.json`。
+- `WEB_BUILD_BASE_HREF`：可选，对应 `flutter build web --base-href`。
+- `WEB_BUILD_CANVASKIT_URL`：可选，用于覆盖 `FLUTTER_WEB_CANVASKIT_URL`，默认值为 `canvaskit/`。
+- `WEB_BUILD_PWA_STRATEGY`：可选，对应 `flutter build web --pwa-strategy`。
+- `WEB_BUILD_DART_DEFINES`：可选，按换行分隔的 `KEY=VALUE` 列表，会作为 `--dart-define` 传入。
+- `WEB_BUILD_EXTRA_ARGS`：可选，额外的 `flutter build web` 参数。
 
 ### Desktop (Linux, Windows, macOS)
 
