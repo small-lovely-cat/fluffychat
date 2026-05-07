@@ -89,6 +89,22 @@ flutter build web --release
   **Please only the values, you really need**. If you e.g. only want
   to change the default homeserver, then only modify the `defaultHomeserver` key.
 
+#### GitHub Actions web release
+
+The `Web Build` workflow uses the `web-build` environment and publishes a packaged `build/web`
+bundle to GitHub Releases.
+
+Optional `web-build` environment secrets:
+
+- `WEB_BUILD_CONFIG_JSON`: Raw `config.json` contents written during CI and copied into `build/web/config.json`.
+- `WEB_BUILD_RELEASE_TAG`: Default release tag for manual workflow runs when no input override is provided.
+- `WEB_BUILD_RELEASE_NAME`: Default release name for manual workflow runs when no input override is provided.
+- `WEB_BUILD_BASE_HREF`: Optional `flutter build web --base-href` value.
+- `WEB_BUILD_CANVASKIT_URL`: Optional override for `FLUTTER_WEB_CANVASKIT_URL`. Defaults to `canvaskit/`.
+- `WEB_BUILD_PWA_STRATEGY`: Optional `flutter build web --pwa-strategy` value.
+- `WEB_BUILD_DART_DEFINES`: Optional newline-separated `KEY=VALUE` entries passed as `--dart-define`.
+- `WEB_BUILD_EXTRA_ARGS`: Optional extra `flutter build web` arguments.
+
 ### Desktop (Linux, Windows, macOS)
 
 * Enable Desktop support in Flutter: https://flutter.dev/desktop

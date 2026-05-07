@@ -1,0 +1,184 @@
+name: Web Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_to_release:
+        description: Upload the packaged bundle to GitHub Release
+        required: true
+        default: true
+        type: boolean
+      release_tag:
+        description: Optional release tag override
+        required: false
+        type: string
+      release_name:
+        description: Optional release name override
+        required: false
+        type: string
+  push:
+    tags:
+      - "v*"
+      - "web-v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: web-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build_web:
+    name: Build Web Bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment:
+      name: web-build
+      deployment: false
+    env:
+      WEB_BUILD_BASE_HREF: ${{ secrets.WEB_BUILD_BASE_HREF }}
+      WEB_BUILD_CANVASKIT_URL: ${{ secrets.WEB_BUILD_CANVASKIT_URL }}
+      WEB_BUILD_CONFIG_JSON: ${{ secrets.WEB_BUILD_CONFIG_JSON }}
+      WEB_BUILD_DART_DEFINES: ${{ secrets.WEB_BUILD_DART_DEFINES }}
+      WEB_BUILD_EXTRA_ARGS: ${{ secrets.WEB_BUILD_EXTRA_ARGS }}
+      WEB_BUILD_PWA_STRATEGY: ${{ secrets.WEB_BUILD_PWA_STRATEGY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve Flutter version
+        id: flutter_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^  flutter:[[:space:]]*\([^[:space:]]*\).*$/\1/p' .tool_versions.yaml | head -n 1)"
+          if [[ -z "$version" ]]; then
+            echo "Unable to read flutter version from .tool_versions.yaml" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve release parameters
+        id: release_meta
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_PUBLISH_TO_RELEASE: ${{ github.event.inputs.publish_to_release }}
+          INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+          INPUT_RELEASE_NAME: ${{ github.event.inputs.release_name }}
+          SECRET_RELEASE_TAG: ${{ secrets.WEB_BUILD_RELEASE_TAG }}
+          SECRET_RELEASE_NAME: ${{ secrets.WEB_BUILD_RELEASE_NAME }}
+        run: |
+          set -euo pipefail
+
+          publish_to_release="false"
+          release_tag=""
+          release_name=""
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            publish_to_release="$INPUT_PUBLISH_TO_RELEASE"
+            release_tag="${INPUT_RELEASE_TAG:-${SECRET_RELEASE_TAG:-}}"
+            release_name="${INPUT_RELEASE_NAME:-${SECRET_RELEASE_NAME:-}}"
+          elif [[ "$EVENT_NAME" == "push" && -n "$REF_NAME" ]]; then
+            publish_to_release="true"
+            release_tag="$REF_NAME"
+            release_name="$REF_NAME"
+          fi
+
+          if [[ -z "$release_tag" ]]; then
+            release_tag="web-$(date -u '+%Y%m%d-%H%M%S')"
+          fi
+
+          if [[ -z "$release_name" ]]; then
+            release_name="$release_tag"
+          fi
+
+          archive_suffix="$(printf '%s' "$release_tag" | tr '/:@ ' '-')"
+
+          echo "publish_to_release=$publish_to_release" >> "$GITHUB_OUTPUT"
+          echo "tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "name=$release_name" >> "$GITHUB_OUTPUT"
+          echo "archive_suffix=$archive_suffix" >> "$GITHUB_OUTPUT"
+
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential unzip
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install nightly rust-src
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install nightly --profile minimal --component rust-src
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.flutter_version.outputs.version }}
+          cache: true
+
+      - name: Install yq
+        shell: bash
+        env:
+          YQ_VERSION: v4.40.5
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o yq
+          sudo install -m 0755 yq /usr/local/bin/yq
+          rm -f yq
+
+      - name: Build web bundle
+        shell: bash
+        run: ./scripts/build-web-ci.sh
+
+      - name: Package web bundle
+        id: package
+        shell: bash
+        env:
+          ARCHIVE_SUFFIX: ${{ steps.release_meta.outputs.archive_suffix }}
+        run: |
+          set -euo pipefail
+          archive="fluffychat-web-${ARCHIVE_SUFFIX}.zip"
+          rm -f "$archive" "$archive.sha256"
+          (
+            cd build/web
+            zip -r "../../$archive" .
+          )
+          sha256sum "$archive" > "$archive.sha256"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "checksum=$archive.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build-${{ steps.release_meta.outputs.archive_suffix }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            build/web/**
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.checksum }}
+
+      - name: Upload artifacts to GitHub Release
+        if: steps.release_meta.outputs.publish_to_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: ${{ steps.release_meta.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            ${{ steps.package.outputs.archive }}
+            ${{ steps.package.outputs.checksum }}
