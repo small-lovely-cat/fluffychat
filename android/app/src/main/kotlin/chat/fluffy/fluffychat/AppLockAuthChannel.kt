@@ -1,7 +1,6 @@
 package chat.fluffy.fluffychat
 
 import android.app.Application
-import android.os.Build
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -131,7 +130,7 @@ class AppLockAuthChannel private constructor(
             return
         }
         when (call.argument<String>("method")) {
-            METHOD_SOTER -> authenticateWithSoter(call)
+            METHOD_SOTER -> authenticateWithSoter()
             METHOD_SYSTEM_BIOMETRIC -> authenticateWithSystemBiometric(call)
             else -> finishPending(
                 failurePayload(
@@ -195,12 +194,12 @@ class AppLockAuthChannel private constructor(
         }
     }
 
-    private fun authenticateWithSoter(call: MethodCall) {
+    private fun authenticateWithSoter() {
         ensureSoterInitialized(forceReinitialize = false) { initialized, initMessage ->
             if (!initialized || !isSoterAvailable()) {
                 reinitializeAndPrepareSoter { success, message ->
                     if (success) {
-                        requestSoterAuthentication(call, allowRetry = false)
+                        requestSoterAuthentication(allowRetry = false)
                     } else {
                         finishPending(
                             failurePayload(
@@ -213,29 +212,24 @@ class AppLockAuthChannel private constructor(
                 }
                 return@ensureSoterInitialized
             }
-            requestSoterAuthentication(call, allowRetry = true)
+            requestSoterAuthentication(allowRetry = true)
         }
     }
 
-    private fun requestSoterAuthentication(call: MethodCall, allowRetry: Boolean) {
+    private fun requestSoterAuthentication(allowRetry: Boolean) {
         val canceller = SoterBiometricCanceller()
 
         runCatching {
             SoterWrapperApi.ensureConnection()
         }
 
-        val authenticationParam = runCatching {
+        val authenticationParam = try {
             AuthenticationParam.AuthenticationParamBuilder()
                 .setScene(SOTER_SCENE_APP_LOCK)
                 .setBiometricType(ConstantsSoter.FINGERPRINT_AUTH)
                 .setContext(activity)
                 .setSoterBiometricCanceller(canceller)
                 .setPrefilledChallenge(UUID.randomUUID().toString())
-                .setPromptTitle(call.argument<String>("title") ?: "Unlock app")
-                .setPromptSubTitle(call.argument<String>("subtitle") ?: "Use biometric authentication")
-                .setPromptDescription(call.argument<String>("subtitle") ?: "Use biometric authentication")
-                .setPromptButton(call.argument<String>("negativeButton") ?: "Use PIN")
-                .setUseBiometricPrompt(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                 .setSoterBiometricStateCallback(
                     object : SoterBiometricStateCallback {
                         override fun onStartAuthentication() = Unit
@@ -258,7 +252,7 @@ class AppLockAuthChannel private constructor(
                     },
                 )
                 .build()
-        }.getOrElse { throwable ->
+        } catch (throwable: Throwable) {
             finishPending(
                 failurePayload(
                     errorCode = "soter_auth_param_failed",
@@ -281,7 +275,7 @@ class AppLockAuthChannel private constructor(
                         if (allowRetry && result.errCode in RECOVERABLE_SOTER_ERRORS) {
                             reinitializeAndPrepareSoter { success, message ->
                                 if (success) {
-                                    requestSoterAuthentication(call, allowRetry = false)
+                                    requestSoterAuthentication(allowRetry = false)
                                 } else {
                                     finishPending(
                                         failurePayload(
