@@ -10,6 +10,13 @@ enum AppLockAuthMethod {
 
   bool get isBiometric => this != AppLockAuthMethod.pin;
 
+  bool get isSupportedOnCurrentPlatform => switch (this) {
+    AppLockAuthMethod.pin => true,
+    AppLockAuthMethod.soter => PlatformInfos.isAndroid,
+    AppLockAuthMethod.systemBiometric =>
+      PlatformInfos.isAndroid || PlatformInfos.isIOS,
+  };
+
   String get storageValue => switch (this) {
     AppLockAuthMethod.pin => 'pin',
     AppLockAuthMethod.soter => 'soter',
@@ -75,7 +82,7 @@ class AppLockBiometricResult {
 
 abstract class AppLockBiometricService {
   static Future<AppLockBiometricAvailability> getAvailability() async {
-    if (!PlatformInfos.isAndroid) {
+    if (!PlatformInfos.isAndroid && !PlatformInfos.isIOS) {
       return const AppLockBiometricAvailability();
     }
     try {
@@ -115,7 +122,7 @@ abstract class AppLockBiometricService {
     String? subtitle,
     String? negativeButton,
   }) async {
-    if (!PlatformInfos.isAndroid || !method.isBiometric) {
+    if (!method.isBiometric || !method.isSupportedOnCurrentPlatform) {
       return const AppLockBiometricResult(success: false);
     }
     try {

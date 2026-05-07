@@ -1,6 +1,7 @@
+import 'dart:async';
+
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/utils/app_lock_biometric_service.dart';
-import 'package:fluffychat/utils/platform_infos.dart';
 import 'package:fluffychat/widgets/lock_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -36,7 +37,9 @@ class AppLock extends State<AppLockWidget> with WidgetsBindingObserver {
 
   bool get hasPincode => _hasValidPincode(_pincode);
   bool get canUseBiometricUnlock =>
-      PlatformInfos.isAndroid && isActive && _authMethod.isBiometric;
+      isActive &&
+      _authMethod.isBiometric &&
+      _authMethod.isSupportedOnCurrentPlatform;
   AppLockAuthMethod get authMethod => _authMethod;
 
   bool _hasValidPincode(String? pincode) =>
@@ -48,6 +51,12 @@ class AppLock extends State<AppLockWidget> with WidgetsBindingObserver {
     _authMethod = AppLockAuthMethod.fromStorage(
       AppSettings.appLockAuthMethod.value,
     );
+    if (!_authMethod.isSupportedOnCurrentPlatform) {
+      _authMethod = AppLockAuthMethod.pin;
+      unawaited(
+        AppSettings.appLockAuthMethod.setItem(_authMethod.storageValue),
+      );
+    }
     _isLocked = isActive;
     super.initState();
     WidgetsBinding.instance.addObserver(this);

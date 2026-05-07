@@ -79,7 +79,7 @@ class SettingsSecurityController extends State<SettingsSecurity> {
       }
 
       var authMethod = AppLockAuthMethod.pin;
-      if (PlatformInfos.isAndroid) {
+      if (PlatformInfos.isMobile) {
         final selectedMethod = await _selectAppLockMethod();
         if (selectedMethod == null) {
           return;
@@ -112,18 +112,20 @@ class SettingsSecurityController extends State<SettingsSecurity> {
           isDefaultAction: currentMethod == AppLockAuthMethod.pin,
           icon: const Icon(Icons.pin_outlined),
         ),
-        AdaptiveModalAction(
-          label: l10n.appLockMethodSoter,
-          value: AppLockAuthMethod.soter,
-          isDefaultAction: currentMethod == AppLockAuthMethod.soter,
-          icon: const Icon(Icons.fingerprint_outlined),
-        ),
-        AdaptiveModalAction(
-          label: l10n.appLockMethodSystemBiometric,
-          value: AppLockAuthMethod.systemBiometric,
-          isDefaultAction: currentMethod == AppLockAuthMethod.systemBiometric,
-          icon: const Icon(Icons.security_outlined),
-        ),
+        if (PlatformInfos.isAndroid)
+          AdaptiveModalAction(
+            label: l10n.appLockMethodSoter,
+            value: AppLockAuthMethod.soter,
+            isDefaultAction: currentMethod == AppLockAuthMethod.soter,
+            icon: const Icon(Icons.fingerprint_outlined),
+          ),
+        if (PlatformInfos.isAndroid || PlatformInfos.isIOS)
+          AdaptiveModalAction(
+            label: l10n.appLockMethodSystemBiometric,
+            value: AppLockAuthMethod.systemBiometric,
+            isDefaultAction: currentMethod == AppLockAuthMethod.systemBiometric,
+            icon: const Icon(Icons.security_outlined),
+          ),
       ],
     );
   }
