@@ -1,11 +1,13 @@
 package chat.fluffy.fluffychat
 
 import android.app.Application
+import android.os.Build
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import com.tencent.soter.core.SoterCore
 import com.tencent.soter.core.model.ConstantsSoter
+import com.tencent.soter.core.model.SoterErrCode
 import com.tencent.soter.wrapper.SoterWrapperApi
 import com.tencent.soter.wrapper.wrap_biometric.SoterBiometricCanceller
 import com.tencent.soter.wrapper.wrap_biometric.SoterBiometricStateCallback
@@ -14,8 +16,6 @@ import com.tencent.soter.wrapper.wrap_callback.SoterProcessCallback
 import com.tencent.soter.wrapper.wrap_callback.SoterProcessKeyPreparationResult
 import com.tencent.soter.wrapper.wrap_callback.SoterProcessNoExtResult
 import com.tencent.soter.wrapper.wrap_core.SoterProcessErrCode
-import com.tencent.soter.wrapper.wrap_net.ISoterNetCallback
-import com.tencent.soter.wrapper.wrap_net.IWrapUploadKeyNet
 import com.tencent.soter.wrapper.wrap_task.AuthenticationParam
 import com.tencent.soter.wrapper.wrap_task.InitializeParam
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -64,30 +64,65 @@ class AppLockAuthChannel private constructor(
         if (!startCall(result)) {
             return
         }
-        ensureSoterInitialized { initialized, initMessage ->
-            if (!initialized || !isSoterAvailable()) {
-                finishPending(
+        prepareSoter(allowRetry = true, forceReinitialize = true) { prepareResult ->
+            finishPending(
+                if (prepareResult.success) {
+                    successPayload()
+                } else {
                     failurePayload(
-                        errorCode = "soter_unavailable",
-                        message = initMessage ?: "Tencent Soter is not available on this device.",
+                        errorCode = "soter_prepare_${prepareResult.errCode ?: "failed"}",
+                        message = prepareResult.message ?: "Tencent Soter initialization failed.",
                         shouldFallbackToNative = true,
+                    )
+                },
+            )
+        }
+    }
+
+    private fun prepareSoter(
+        allowRetry: Boolean,
+        forceReinitialize: Boolean,
+        onComplete: (SoterPrepareResult) -> Unit,
+    ) {
+        ensureSoterInitialized(forceReinitialize = forceReinitialize) { initialized, initMessage ->
+            if (!initialized || !isSoterAvailable()) {
+                onComplete(
+                    SoterPrepareResult(
+                        success = false,
+                        errCode = SoterErrCode.ERR_SOTER_NOT_SUPPORTED,
+                        message = initMessage ?: "Tencent Soter is not available on this device.",
                     ),
                 )
                 return@ensureSoterInitialized
             }
-            prepareSoterInternal { success, message ->
-                finishPending(
-                    if (success) {
-                        successPayload()
-                    } else {
-                        failurePayload(
-                            errorCode = "soter_prepare_failed",
-                            message = message ?: "Tencent Soter initialization failed.",
-                            shouldFallbackToNative = true,
-                        )
-                    },
-                )
+
+            runCatching {
+                SoterWrapperApi.ensureConnection()
             }
+
+            prepareSoterInternal { prepareResult ->
+                if (prepareResult.success) {
+                    onComplete(prepareResult)
+                    return@prepareSoterInternal
+                }
+
+                if (allowRetry && prepareResult.errCode in RECOVERABLE_SOTER_PREPARE_ERRORS) {
+                    prepareSoter(
+                        allowRetry = false,
+                        forceReinitialize = true,
+                        onComplete = onComplete,
+                    )
+                    return@prepareSoterInternal
+                }
+
+                onComplete(prepareResult)
+            }
+        }
+    }
+
+    private fun reinitializeAndPrepareSoter(onComplete: (Boolean, String?) -> Unit) {
+        prepareSoter(allowRetry = false, forceReinitialize = true) { prepareResult ->
+            onComplete(prepareResult.success, prepareResult.message)
         }
     }
 
@@ -96,7 +131,7 @@ class AppLockAuthChannel private constructor(
             return
         }
         when (call.argument<String>("method")) {
-            METHOD_SOTER -> authenticateWithSoter()
+            METHOD_SOTER -> authenticateWithSoter(call)
             METHOD_SYSTEM_BIOMETRIC -> authenticateWithSystemBiometric(call)
             else -> finishPending(
                 failurePayload(
@@ -160,24 +195,35 @@ class AppLockAuthChannel private constructor(
         }
     }
 
-    private fun authenticateWithSoter() {
-        ensureSoterInitialized { initialized, initMessage ->
+    private fun authenticateWithSoter(call: MethodCall) {
+        ensureSoterInitialized(forceReinitialize = false) { initialized, initMessage ->
             if (!initialized || !isSoterAvailable()) {
-                finishPending(
-                    failurePayload(
-                        errorCode = "soter_unavailable",
-                        message = initMessage ?: "Tencent Soter is not available on this device.",
-                        shouldFallbackToNative = true,
-                    ),
-                )
+                reinitializeAndPrepareSoter { success, message ->
+                    if (success) {
+                        requestSoterAuthentication(call, allowRetry = false)
+                    } else {
+                        finishPending(
+                            failurePayload(
+                                errorCode = "soter_unavailable",
+                                message = message ?: initMessage ?: "Tencent Soter is not available on this device.",
+                                shouldFallbackToNative = true,
+                            ),
+                        )
+                    }
+                }
                 return@ensureSoterInitialized
             }
-            requestSoterAuthentication(allowRetry = true)
+            requestSoterAuthentication(call, allowRetry = true)
         }
     }
 
-    private fun requestSoterAuthentication(allowRetry: Boolean) {
+    private fun requestSoterAuthentication(call: MethodCall, allowRetry: Boolean) {
         val canceller = SoterBiometricCanceller()
+
+        runCatching {
+            SoterWrapperApi.ensureConnection()
+        }
+
         val authenticationParam = runCatching {
             AuthenticationParam.AuthenticationParamBuilder()
                 .setScene(SOTER_SCENE_APP_LOCK)
@@ -185,6 +231,11 @@ class AppLockAuthChannel private constructor(
                 .setContext(activity)
                 .setSoterBiometricCanceller(canceller)
                 .setPrefilledChallenge(UUID.randomUUID().toString())
+                .setPromptTitle(call.argument<String>("title") ?: "Unlock app")
+                .setPromptSubTitle(call.argument<String>("subtitle") ?: "Use biometric authentication")
+                .setPromptDescription(call.argument<String>("subtitle") ?: "Use biometric authentication")
+                .setPromptButton(call.argument<String>("negativeButton") ?: "Use PIN")
+                .setUseBiometricPrompt(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
                 .setSoterBiometricStateCallback(
                     object : SoterBiometricStateCallback {
                         override fun onStartAuthentication() = Unit
@@ -228,9 +279,9 @@ class AppLockAuthChannel private constructor(
                         }
 
                         if (allowRetry && result.errCode in RECOVERABLE_SOTER_ERRORS) {
-                            prepareSoterInternal { success, message ->
+                            reinitializeAndPrepareSoter { success, message ->
                                 if (success) {
-                                    requestSoterAuthentication(allowRetry = false)
+                                    requestSoterAuthentication(call, allowRetry = false)
                                 } else {
                                     finishPending(
                                         failurePayload(
@@ -267,33 +318,59 @@ class AppLockAuthChannel private constructor(
         }
     }
 
-    private fun prepareSoterInternal(onComplete: (Boolean, String?) -> Unit) {
+    private fun prepareSoterInternal(onComplete: (SoterPrepareResult) -> Unit) {
         runCatching {
             SoterWrapperApi.prepareAuthKey(
                 object : SoterProcessCallback<SoterProcessKeyPreparationResult> {
                     override fun onResult(result: SoterProcessKeyPreparationResult) {
-                        onComplete(result.isSuccess(), result.errMsg)
+                        onComplete(
+                            SoterPrepareResult(
+                                success = result.isSuccess(),
+                                errCode = result.errCode,
+                                message = result.errMsg,
+                            ),
+                        )
                     }
                 },
                 false,
                 true,
                 SOTER_SCENE_APP_LOCK,
-                SuccessUploadKeyNet(),
-                SuccessUploadKeyNet(),
+                null,
+                null,
             )
         }.onFailure { throwable ->
-            onComplete(false, throwable.message ?: "Tencent Soter initialization failed.")
+            onComplete(
+                SoterPrepareResult(
+                    success = false,
+                    message = throwable.message ?: "Tencent Soter initialization failed.",
+                ),
+            )
         }
     }
 
-    private fun ensureSoterInitialized(onComplete: (Boolean, String?) -> Unit) {
-        if (runCatching { SoterWrapperApi.isInitialized() }.getOrDefault(false)) {
+    private fun ensureSoterInitialized(
+        forceReinitialize: Boolean = false,
+        onComplete: (Boolean, String?) -> Unit,
+    ) {
+        if (forceReinitialize) {
+            runCatching {
+                SoterWrapperApi.release()
+            }
+        }
+
+        if (!forceReinitialize && runCatching { SoterWrapperApi.isInitialized() }.getOrDefault(false)) {
+            runCatching {
+                SoterWrapperApi.ensureConnection()
+            }
             onComplete(true, null)
             return
         }
 
         runCatching {
-            SoterWrapperApi.detectAppForeground(activity.application as Application)
+            if (!foregroundDetectionRegistered) {
+                SoterWrapperApi.detectAppForeground(activity.application as Application)
+                foregroundDetectionRegistered = true
+            }
 
             val initParam = InitializeParam.InitializeParamBuilder()
                 .setScenes(SOTER_SCENE_APP_LOCK)
@@ -305,6 +382,11 @@ class AppLockAuthChannel private constructor(
                     override fun onResult(result: SoterProcessNoExtResult) {
                         val initialized = result.isSuccess() ||
                             result.errCode == SoterProcessErrCode.ERR_ALREADY_INITIALIZED
+                        if (initialized) {
+                            runCatching {
+                                SoterWrapperApi.ensureConnection()
+                            }
+                        }
                         onComplete(
                             initialized,
                             if (initialized) {
@@ -332,8 +414,21 @@ class AppLockAuthChannel private constructor(
         }.getOrDefault(false)
     }
 
+    private fun isSoterNativeSupported(): Boolean {
+        return runCatching {
+            SoterCore.tryToInitSoterBeforeTreble()
+            SoterCore.tryToInitSoterTreble(activity.applicationContext)
+            SoterCore.setUp()
+            SoterCore.isNativeSupportSoter() &&
+                SoterCore.isSupportBiometric(
+                    activity.applicationContext,
+                    ConstantsSoter.FINGERPRINT_AUTH,
+                )
+        }.getOrDefault(false)
+    }
+
     private fun soterCapability(): SoterCapability {
-        val supported = isSoterAvailable()
+        val supported = isSoterNativeSupported()
         if (!supported) {
             return SoterCapability(
                 supported = false,
@@ -343,7 +438,7 @@ class AppLockAuthChannel private constructor(
         }
         return SoterCapability(
             supported = true,
-            ready = runCatching { SoterWrapperApi.isInitialized() }.getOrDefault(false),
+            ready = runCatching { SoterWrapperApi.isSupportSoter() }.getOrDefault(false),
             message = null,
         )
     }
@@ -404,24 +499,16 @@ class AppLockAuthChannel private constructor(
         )
     }
 
-    private class SuccessUploadKeyNet : IWrapUploadKeyNet {
-        private var callback: ISoterNetCallback<IWrapUploadKeyNet.UploadResult>? = null
-
-        override fun setRequest(request: IWrapUploadKeyNet.UploadRequest) = Unit
-
-        override fun execute() {
-            callback?.onNetEnd(IWrapUploadKeyNet.UploadResult(true))
-        }
-
-        override fun setCallback(callback: ISoterNetCallback<IWrapUploadKeyNet.UploadResult>) {
-            this.callback = callback
-        }
-    }
-
     private data class SoterCapability(
         val supported: Boolean,
         val ready: Boolean,
         val message: String?,
+    )
+
+    private data class SoterPrepareResult(
+        val success: Boolean,
+        val errCode: Int? = null,
+        val message: String? = null,
     )
 
     companion object {
@@ -435,9 +522,20 @@ class AppLockAuthChannel private constructor(
             SoterProcessErrCode.ERR_ASK_NOT_EXIST,
             SoterProcessErrCode.ERR_SIGNATURE_INVALID,
             SoterProcessErrCode.ERR_NOT_INIT_WRAPPER,
+            SoterProcessErrCode.ERR_AUTH_KEY_NOT_IN_MAP,
+            SoterErrCode.ERR_SOTER_NOT_SUPPORTED,
+        )
+        private val RECOVERABLE_SOTER_PREPARE_ERRORS = setOf(
+            SoterProcessErrCode.ERR_NOT_INIT_WRAPPER,
+            SoterProcessErrCode.ERR_AUTH_KEY_NOT_IN_MAP,
+            SoterErrCode.ERR_SOTER_NOT_SUPPORTED,
+            SoterErrCode.ERR_ASK_NOT_EXIST,
+            SoterErrCode.ERR_AUTH_KEY_GEN_FAILED,
+            SoterErrCode.ERR_ASK_GEN_FAILED,
         )
 
         private var instance: AppLockAuthChannel? = null
+        private var foregroundDetectionRegistered = false
 
         fun attach(activity: FlutterFragmentActivity, flutterEngine: FlutterEngine) {
             val current = instance
