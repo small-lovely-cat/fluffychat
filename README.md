@@ -76,6 +76,30 @@ cd fluffychat
     * FLUFFYCHAT_INSTALL_IPA: set to `1` if you want the IPA to be deployed to connected devices after building, otherwise unset
 * Run `./scripts/build-ios.sh`
 
+#### GitHub Actions TrollStore `.tipa`
+
+`iOS TIPA Build` uses `macos-latest` together with
+`flutter build ios --release --no-codesign` to produce an unsigned `.tipa`
+package suitable for import into TrollStore.
+
+Optional `workflow_dispatch` inputs:
+
+- `upload_to_release`: also publish the generated `.tipa` and checksum to GitHub Releases
+- `bundle_id_base`: optional bundle identifier base that replaces `im.fluffychat`
+  during the build, useful when you do not want the TrollStore build to clash
+  with the App Store bundle identifier
+
+Artifacts:
+
+- `build/ios/tipa/*.tipa`
+- `build/ios/tipa/*.sha256`
+
+Local equivalent:
+
+```bash
+bash ./scripts/build-ios-tipa.sh
+```
+
 ### Web
 
 * Build with:

@@ -1,0 +1,136 @@
+name: iOS TIPA Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_to_release:
+        description: "Upload `.tipa` artifacts to GitHub Release"
+        required: true
+        default: false
+        type: boolean
+      bundle_id_base:
+        description: "Optional bundle identifier base used to replace `im.fluffychat` (example: `com.example.fluffychat`)"
+        required: false
+        type: string
+  push:
+    tags:
+      - "v*"
+      - "ios-v*"
+      - "tipa-v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-tipa-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build_ios_tipa:
+    name: Build TrollStore TIPA
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve Flutter version
+        id: flutter_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^  flutter:[[:space:]]*\([^[:space:]]*\).*$/\1/p' .tool_versions.yaml | head -n 1)"
+          if [[ -z "$version" ]]; then
+            echo "Unable to read flutter version from .tool_versions.yaml" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve build parameters
+        id: params
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          INPUT_UPLOAD_TO_RELEASE: ${{ github.event.inputs.upload_to_release }}
+          INPUT_BUNDLE_ID_BASE: ${{ github.event.inputs.bundle_id_base }}
+        run: |
+          set -euo pipefail
+
+          upload_to_release="false"
+          bundle_id_base=""
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            upload_to_release="$INPUT_UPLOAD_TO_RELEASE"
+            bundle_id_base="$INPUT_BUNDLE_ID_BASE"
+          elif [[ "$EVENT_NAME" == "push" && "$REF" == refs/tags/* ]]; then
+            upload_to_release="true"
+          fi
+
+          version="$(sed -n 's/^version:[[:space:]]*\([^[:space:]]*\).*$/\1/p' pubspec.yaml | head -n 1)"
+          if [[ -z "$version" ]]; then
+            echo "Unable to read package version from pubspec.yaml" >&2
+            exit 1
+          fi
+
+          release_name="$(date -u '+%Y%m%d-%H%M%S')"
+          archive_suffix="$(printf '%s' "$release_name" | tr '/:@ ' '-')"
+          version_suffix="$(printf '%s' "$version" | tr '/:+@ ' '-----')"
+
+          echo "upload_to_release=$upload_to_release" >> "$GITHUB_OUTPUT"
+          echo "bundle_id_base=$bundle_id_base" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$release_name" >> "$GITHUB_OUTPUT"
+          echo "name=$release_name" >> "$GITHUB_OUTPUT"
+          echo "archive_suffix=$archive_suffix" >> "$GITHUB_OUTPUT"
+          echo "tipa_basename=fluffychat-ios-${version_suffix}-trollstore-${archive_suffix}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.flutter_version.outputs.version }}
+          cache: true
+
+      - name: Precache iOS artifacts
+        run: flutter precache --ios
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build TrollStore TIPA
+        shell: bash
+        env:
+          FLUFFYCHAT_NEW_GROUP: ${{ steps.params.outputs.bundle_id_base }}
+          TIPA_BASENAME: ${{ steps.params.outputs.tipa_basename }}
+        run: bash ./scripts/build-ios-tipa.sh
+
+      - name: List output files
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -lah build/ios/iphoneos || true
+          ls -lah build/ios/tipa || true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-tipa-${{ steps.params.outputs.archive_suffix }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            build/ios/tipa/*.tipa
+            build/ios/tipa/*.sha256
+
+      - name: Upload artifacts to GitHub Release
+        if: steps.params.outputs.upload_to_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.params.outputs.tag }}
+          name: ${{ steps.params.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            build/ios/tipa/*.tipa
+            build/ios/tipa/*.sha256
