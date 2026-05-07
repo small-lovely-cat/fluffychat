@@ -1,6 +1,7 @@
 package chat.fluffy.fluffychat
 
 import android.app.Application
+import android.util.Log
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -22,6 +23,8 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.UUID
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class AppLockAuthChannel private constructor(
     private var activity: FlutterFragmentActivity,
@@ -29,9 +32,15 @@ class AppLockAuthChannel private constructor(
 ) : MethodChannel.MethodCallHandler {
     private val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NAME)
     private var pendingResult: MethodChannel.Result? = null
+    private val soterCapabilityLock = Any()
+    @Volatile
+    private var cachedSoterCapability: SoterCapability? = null
+    @Volatile
+    private var soterCapabilityWarmupInFlight = false
 
     init {
         channel.setMethodCallHandler(this)
+        warmUpSoterCapability()
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -49,6 +58,13 @@ class AppLockAuthChannel private constructor(
         }
         val nativeCapability = nativeCapability()
         val soterCapability = soterCapability()
+        logInfo(
+            "getCapabilities nativeSupported=${nativeCapability.first} " +
+                "nativeMessage=${nativeCapability.second} " +
+                "soterSupported=${soterCapability.supported} " +
+                "soterReady=${soterCapability.ready} " +
+                "soterMessage=${soterCapability.message}",
+        )
         finishPending(
             mapOf(
                 "nativeSupported" to nativeCapability.first,
@@ -63,7 +79,12 @@ class AppLockAuthChannel private constructor(
         if (!startCall(result)) {
             return
         }
+        logInfo("prepareSoter requested")
         prepareSoter(allowRetry = true, forceReinitialize = true) { prepareResult ->
+            logInfo(
+                "prepareSoter finished success=${prepareResult.success} " +
+                    "errCode=${prepareResult.errCode} message=${prepareResult.message}",
+            )
             finishPending(
                 if (prepareResult.success) {
                     successPayload()
@@ -83,8 +104,16 @@ class AppLockAuthChannel private constructor(
         forceReinitialize: Boolean,
         onComplete: (SoterPrepareResult) -> Unit,
     ) {
+        logInfo(
+            "prepareSoter start allowRetry=$allowRetry forceReinitialize=$forceReinitialize",
+        )
         ensureSoterInitialized(forceReinitialize = forceReinitialize) { initialized, initMessage ->
-            if (!initialized || !isSoterAvailable()) {
+            val soterAvailable = isSoterAvailable()
+            logInfo(
+                "prepareSoter after init initialized=$initialized " +
+                    "soterAvailable=$soterAvailable initMessage=$initMessage",
+            )
+            if (!initialized || !soterAvailable) {
                 onComplete(
                     SoterPrepareResult(
                         success = false,
@@ -97,6 +126,9 @@ class AppLockAuthChannel private constructor(
 
             runCatching {
                 SoterWrapperApi.ensureConnection()
+                logInfo("prepareSoter ensureConnection succeeded")
+            }.onFailure { throwable ->
+                logWarn("prepareSoter ensureConnection failed: ${throwable.message}")
             }
 
             prepareSoterInternal { prepareResult ->
@@ -106,6 +138,10 @@ class AppLockAuthChannel private constructor(
                 }
 
                 if (allowRetry && prepareResult.errCode in RECOVERABLE_SOTER_PREPARE_ERRORS) {
+                    logWarn(
+                        "prepareSoter retrying after recoverable error " +
+                            "errCode=${prepareResult.errCode} message=${prepareResult.message}",
+                    )
                     prepareSoter(
                         allowRetry = false,
                         forceReinitialize = true,
@@ -120,6 +156,7 @@ class AppLockAuthChannel private constructor(
     }
 
     private fun reinitializeAndPrepareSoter(onComplete: (Boolean, String?) -> Unit) {
+        logInfo("reinitializeAndPrepareSoter requested")
         prepareSoter(allowRetry = false, forceReinitialize = true) { prepareResult ->
             onComplete(prepareResult.success, prepareResult.message)
         }
@@ -143,6 +180,10 @@ class AppLockAuthChannel private constructor(
 
     private fun authenticateWithSystemBiometric(call: MethodCall) {
         val nativeCapability = nativeCapability()
+        logInfo(
+            "authenticateWithSystemBiometric nativeSupported=${nativeCapability.first} " +
+                "message=${nativeCapability.second}",
+        )
         if (!nativeCapability.first) {
             finishPending(
                 failurePayload(
@@ -160,6 +201,7 @@ class AppLockAuthChannel private constructor(
                 executor,
                 object : BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                        logInfo("systemBiometric onAuthenticationSucceeded")
                         finishPending(successPayload())
                     }
 
@@ -167,6 +209,10 @@ class AppLockAuthChannel private constructor(
                         val cancelled = errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON ||
                             errorCode == BiometricPrompt.ERROR_USER_CANCELED ||
                             errorCode == BiometricPrompt.ERROR_CANCELED
+                        logWarn(
+                            "systemBiometric onAuthenticationError " +
+                                "errorCode=$errorCode cancelled=$cancelled errString=$errString",
+                        )
                         finishPending(
                             failurePayload(
                                 errorCode = "biometric_error_$errorCode",
@@ -183,8 +229,10 @@ class AppLockAuthChannel private constructor(
                 .setSubtitle(call.argument<String>("subtitle") ?: "Use biometric authentication")
                 .setNegativeButtonText(call.argument<String>("negativeButton") ?: "Use PIN")
                 .build()
+            logInfo("systemBiometric authenticate prompt shown")
             prompt.authenticate(promptInfo)
         }.onFailure { throwable ->
+            logError("systemBiometric failed to start", throwable)
             finishPending(
                 failurePayload(
                     errorCode = "biometric_prompt_failed",
@@ -195,9 +243,19 @@ class AppLockAuthChannel private constructor(
     }
 
     private fun authenticateWithSoter() {
+        logInfo("authenticateWithSoter requested")
         ensureSoterInitialized(forceReinitialize = false) { initialized, initMessage ->
-            if (!initialized || !isSoterAvailable()) {
+            val soterAvailable = isSoterAvailable()
+            logInfo(
+                "authenticateWithSoter after init initialized=$initialized " +
+                    "soterAvailable=$soterAvailable initMessage=$initMessage",
+            )
+            if (!initialized || !soterAvailable) {
                 reinitializeAndPrepareSoter { success, message ->
+                    logInfo(
+                        "authenticateWithSoter reinitialize result " +
+                            "success=$success message=$message",
+                    )
                     if (success) {
                         requestSoterAuthentication(allowRetry = false)
                     } else {
@@ -217,10 +275,14 @@ class AppLockAuthChannel private constructor(
     }
 
     private fun requestSoterAuthentication(allowRetry: Boolean) {
+        logInfo("requestSoterAuthentication start allowRetry=$allowRetry")
         val canceller = SoterBiometricCanceller()
 
         runCatching {
             SoterWrapperApi.ensureConnection()
+            logInfo("requestSoterAuthentication ensureConnection succeeded")
+        }.onFailure { throwable ->
+            logWarn("requestSoterAuthentication ensureConnection failed: ${throwable.message}")
         }
 
         val authenticationParam = try {
@@ -232,27 +294,46 @@ class AppLockAuthChannel private constructor(
                 .setPrefilledChallenge(UUID.randomUUID().toString())
                 .setSoterBiometricStateCallback(
                     object : SoterBiometricStateCallback {
-                        override fun onStartAuthentication() = Unit
+                        override fun onStartAuthentication() {
+                            logInfo("soter biometric callback onStartAuthentication")
+                        }
 
                         override fun onAuthenticationHelp(
                             helpCode: Int,
                             helpString: CharSequence,
-                        ) = Unit
+                        ) {
+                            logInfo(
+                                "soter biometric callback onAuthenticationHelp " +
+                                    "helpCode=$helpCode helpString=$helpString",
+                            )
+                        }
 
-                        override fun onAuthenticationSucceed() = Unit
+                        override fun onAuthenticationSucceed() {
+                            logInfo("soter biometric callback onAuthenticationSucceed")
+                        }
 
-                        override fun onAuthenticationFailed() = Unit
+                        override fun onAuthenticationFailed() {
+                            logWarn("soter biometric callback onAuthenticationFailed")
+                        }
 
-                        override fun onAuthenticationCancelled() = Unit
+                        override fun onAuthenticationCancelled() {
+                            logInfo("soter biometric callback onAuthenticationCancelled")
+                        }
 
                         override fun onAuthenticationError(
                             errorCode: Int,
                             errorString: CharSequence,
-                        ) = Unit
+                        ) {
+                            logWarn(
+                                "soter biometric callback onAuthenticationError " +
+                                    "errorCode=$errorCode errorString=$errorString",
+                            )
+                        }
                     },
                 )
                 .build()
         } catch (throwable: Throwable) {
+            logError("requestSoterAuthentication failed to build AuthenticationParam", throwable)
             finishPending(
                 failurePayload(
                     errorCode = "soter_auth_param_failed",
@@ -267,13 +348,25 @@ class AppLockAuthChannel private constructor(
             SoterWrapperApi.requestAuthorizeAndSign(
                 object : SoterProcessCallback<SoterProcessAuthenticationResult> {
                     override fun onResult(result: SoterProcessAuthenticationResult) {
+                        logInfo(
+                            "soter auth callback success=${result.isSuccess()} " +
+                                "errCode=${result.errCode} errMsg=${result.errMsg}",
+                        )
                         if (result.isSuccess()) {
                             finishPending(successPayload())
                             return
                         }
 
                         if (allowRetry && result.errCode in RECOVERABLE_SOTER_ERRORS) {
+                            logWarn(
+                                "soter auth retrying after recoverable error " +
+                                    "errCode=${result.errCode} errMsg=${result.errMsg}",
+                            )
                             reinitializeAndPrepareSoter { success, message ->
+                                logInfo(
+                                    "soter auth retry prepare result success=$success " +
+                                        "message=$message",
+                                )
                                 if (success) {
                                     requestSoterAuthentication(allowRetry = false)
                                 } else {
@@ -302,6 +395,7 @@ class AppLockAuthChannel private constructor(
                 authenticationParam,
             )
         }.onFailure { throwable ->
+            logError("requestSoterAuthentication failed to start", throwable)
             finishPending(
                 failurePayload(
                     errorCode = "soter_auth_request_failed",
@@ -317,6 +411,10 @@ class AppLockAuthChannel private constructor(
             SoterWrapperApi.prepareAuthKey(
                 object : SoterProcessCallback<SoterProcessKeyPreparationResult> {
                     override fun onResult(result: SoterProcessKeyPreparationResult) {
+                        logInfo(
+                            "prepareSoterInternal callback success=${result.isSuccess()} " +
+                                "errCode=${result.errCode} errMsg=${result.errMsg}",
+                        )
                         onComplete(
                             SoterPrepareResult(
                                 success = result.isSuccess(),
@@ -333,6 +431,7 @@ class AppLockAuthChannel private constructor(
                 null,
             )
         }.onFailure { throwable ->
+            logError("prepareSoterInternal failed to start", throwable)
             onComplete(
                 SoterPrepareResult(
                     success = false,
@@ -346,15 +445,22 @@ class AppLockAuthChannel private constructor(
         forceReinitialize: Boolean = false,
         onComplete: (Boolean, String?) -> Unit,
     ) {
+        logInfo("ensureSoterInitialized start forceReinitialize=$forceReinitialize")
         if (forceReinitialize) {
             runCatching {
                 SoterWrapperApi.release()
+                logInfo("ensureSoterInitialized release succeeded")
+            }.onFailure { throwable ->
+                logWarn("ensureSoterInitialized release failed: ${throwable.message}")
             }
         }
 
         if (!forceReinitialize && runCatching { SoterWrapperApi.isInitialized() }.getOrDefault(false)) {
             runCatching {
                 SoterWrapperApi.ensureConnection()
+                logInfo("ensureSoterInitialized reused existing initialization")
+            }.onFailure { throwable ->
+                logWarn("ensureSoterInitialized ensureConnection failed: ${throwable.message}")
             }
             onComplete(true, null)
             return
@@ -364,6 +470,7 @@ class AppLockAuthChannel private constructor(
             if (!foregroundDetectionRegistered) {
                 SoterWrapperApi.detectAppForeground(activity.application as Application)
                 foregroundDetectionRegistered = true
+                logInfo("ensureSoterInitialized registered foreground detector")
             }
 
             val initParam = InitializeParam.InitializeParamBuilder()
@@ -376,9 +483,20 @@ class AppLockAuthChannel private constructor(
                     override fun onResult(result: SoterProcessNoExtResult) {
                         val initialized = result.isSuccess() ||
                             result.errCode == SoterProcessErrCode.ERR_ALREADY_INITIALIZED
+                        logInfo(
+                            "ensureSoterInitialized callback success=${result.isSuccess()} " +
+                                "initialized=$initialized errCode=${result.errCode} " +
+                                "errMsg=${result.errMsg}",
+                        )
                         if (initialized) {
                             runCatching {
                                 SoterWrapperApi.ensureConnection()
+                                logInfo("ensureSoterInitialized callback ensureConnection succeeded")
+                            }.onFailure { throwable ->
+                                logWarn(
+                                    "ensureSoterInitialized callback ensureConnection failed: " +
+                                        throwable.message,
+                                )
                             }
                         }
                         onComplete(
@@ -394,22 +512,34 @@ class AppLockAuthChannel private constructor(
                 initParam,
             )
         }.onFailure { throwable ->
+            logError("ensureSoterInitialized failed to start init", throwable)
             onComplete(false, throwable.message ?: "Failed to initialize Tencent Soter.")
         }
     }
 
     private fun isSoterAvailable(): Boolean {
-        return runCatching {
+        val available = runCatching {
             SoterWrapperApi.isSupportSoter() &&
                 SoterCore.isSupportBiometric(
                     activity.applicationContext,
                     ConstantsSoter.FINGERPRINT_AUTH,
                 )
         }.getOrDefault(false)
+        if (available) {
+            synchronized(soterCapabilityLock) {
+                cachedSoterCapability = SoterCapability(
+                    supported = true,
+                    ready = true,
+                    message = null,
+                )
+            }
+        }
+        logInfo("isSoterAvailable=$available")
+        return available
     }
 
     private fun isSoterNativeSupported(): Boolean {
-        return runCatching {
+        val supported = runCatching {
             SoterCore.tryToInitSoterBeforeTreble()
             SoterCore.tryToInitSoterTreble(activity.applicationContext)
             SoterCore.setUp()
@@ -419,22 +549,74 @@ class AppLockAuthChannel private constructor(
                     ConstantsSoter.FINGERPRINT_AUTH,
                 )
         }.getOrDefault(false)
+        logInfo("isSoterNativeSupported=$supported")
+        return supported
     }
 
     private fun soterCapability(): SoterCapability {
-        val supported = isSoterNativeSupported()
-        if (!supported) {
-            return SoterCapability(
-                supported = false,
-                ready = false,
-                message = "Tencent Soter is not available on this device.",
+        cachedSoterCapability?.let { capability ->
+            return capability.copy(
+                ready = capability.ready || runCatching { SoterWrapperApi.isSupportSoter() }.getOrDefault(false),
             )
         }
+
+        warmUpSoterCapability()
+
+        val nativeSupported = nativeCapability().first
         return SoterCapability(
-            supported = true,
-            ready = runCatching { SoterWrapperApi.isSupportSoter() }.getOrDefault(false),
-            message = null,
+            supported = nativeSupported,
+            ready = false,
+            message = if (nativeSupported) {
+                null
+            } else {
+                "Tencent Soter is not available on this device."
+            },
         )
+    }
+
+    private fun warmUpSoterCapability(force: Boolean = false) {
+        synchronized(soterCapabilityLock) {
+            if (!force && (cachedSoterCapability != null || soterCapabilityWarmupInFlight)) {
+                return
+            }
+            soterCapabilityWarmupInFlight = true
+        }
+
+        soterWarmupExecutor.execute {
+            logInfo("warmUpSoterCapability start force=$force")
+            val capability = runCatching {
+                val supported = isSoterNativeSupported()
+                if (!supported) {
+                    SoterCapability(
+                        supported = false,
+                        ready = false,
+                        message = "Tencent Soter is not available on this device.",
+                    )
+                } else {
+                    SoterCapability(
+                        supported = true,
+                        ready = runCatching { SoterWrapperApi.isSupportSoter() }.getOrDefault(false),
+                        message = null,
+                    )
+                }
+            }.getOrElse { throwable ->
+                logError("warmUpSoterCapability failed", throwable)
+                SoterCapability(
+                    supported = false,
+                    ready = false,
+                    message = throwable.message ?: "Tencent Soter is not available on this device.",
+                )
+            }
+
+            synchronized(soterCapabilityLock) {
+                cachedSoterCapability = capability.takeIf { it.supported }
+                soterCapabilityWarmupInFlight = false
+            }
+            logInfo(
+                "warmUpSoterCapability finished supported=${capability.supported} " +
+                    "ready=${capability.ready} message=${capability.message}",
+            )
+        }
     }
 
     private fun nativeCapability(): Pair<Boolean, String?> {
@@ -493,6 +675,22 @@ class AppLockAuthChannel private constructor(
         )
     }
 
+    private fun logInfo(message: String) {
+        Log.i(LOG_TAG, message)
+    }
+
+    private fun logWarn(message: String) {
+        Log.w(LOG_TAG, message)
+    }
+
+    private fun logError(message: String, throwable: Throwable? = null) {
+        if (throwable == null) {
+            Log.e(LOG_TAG, message)
+        } else {
+            Log.e(LOG_TAG, message, throwable)
+        }
+    }
+
     private data class SoterCapability(
         val supported: Boolean,
         val ready: Boolean,
@@ -507,6 +705,7 @@ class AppLockAuthChannel private constructor(
 
     companion object {
         private const val CHANNEL_NAME = "chat.fluffy.app_lock/auth"
+        private const val LOG_TAG = "FluffySoter"
         private const val METHOD_SOTER = "soter"
         private const val METHOD_SYSTEM_BIOMETRIC = "system_biometric"
         private const val SOTER_SCENE_APP_LOCK = 0x4643
@@ -530,6 +729,7 @@ class AppLockAuthChannel private constructor(
 
         private var instance: AppLockAuthChannel? = null
         private var foregroundDetectionRegistered = false
+        private val soterWarmupExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
         fun attach(activity: FlutterFragmentActivity, flutterEngine: FlutterEngine) {
             val current = instance
@@ -537,6 +737,7 @@ class AppLockAuthChannel private constructor(
                 instance = AppLockAuthChannel(activity, flutterEngine)
             } else {
                 current.activity = activity
+                current.warmUpSoterCapability()
             }
         }
     }
