@@ -16,10 +16,6 @@ on:
         required: true
         default: false
         type: boolean
-      release_tag:
-        description: Release tag (required when upload_to_release=true in manual runs)
-        required: false
-        type: string
       sign_release:
         description: Sign release build (requires signing secrets or manual signing inputs)
         required: true
@@ -64,6 +60,9 @@ jobs:
     # runs-on: self-hosted
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    environment:
+      name: android-build
+      deployment: false
 
     steps:
       - name: Checkout
@@ -87,10 +86,8 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           REF: ${{ github.ref }}
-          REF_NAME: ${{ github.ref_name }}
           INPUT_BUILD_MODE: ${{ github.event.inputs.build_mode }}
           INPUT_UPLOAD_TO_RELEASE: ${{ github.event.inputs.upload_to_release }}
-          INPUT_RELEASE_TAG: ${{ github.event.inputs.release_tag }}
           INPUT_SIGN_RELEASE: ${{ github.event.inputs.sign_release }}
           INPUT_BUILD_AAB: ${{ github.event.inputs.build_aab }}
           SECRET_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -99,23 +96,17 @@ jobs:
 
           build_mode="debug"
           upload_to_release="false"
-          release_tag=""
           sign_release="false"
           build_aab="false"
 
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             build_mode="$INPUT_BUILD_MODE"
             upload_to_release="$INPUT_UPLOAD_TO_RELEASE"
-            release_tag="$INPUT_RELEASE_TAG"
             sign_release="$INPUT_SIGN_RELEASE"
             build_aab="$INPUT_BUILD_AAB"
-            if [[ "$upload_to_release" == "true" && -z "$release_tag" && "$REF" == refs/tags/* ]]; then
-              release_tag="$REF_NAME"
-            fi
           elif [[ "$EVENT_NAME" == "push" && "$REF" == refs/tags/* ]]; then
             build_mode="release"
             upload_to_release="true"
-            release_tag="$REF_NAME"
             if [[ -n "$SECRET_KEYSTORE_B64" ]]; then
               sign_release="true"
             fi
@@ -123,16 +114,8 @@ jobs:
 
           echo "build_mode=$build_mode" >> "$GITHUB_OUTPUT"
           echo "upload_to_release=$upload_to_release" >> "$GITHUB_OUTPUT"
-          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
           echo "sign_release=$sign_release" >> "$GITHUB_OUTPUT"
           echo "build_aab=$build_aab" >> "$GITHUB_OUTPUT"
-
-      - name: Validate manual release parameters
-        if: steps.params.outputs.upload_to_release == 'true' && steps.params.outputs.release_tag == ''
-        shell: bash
-        run: |
-          echo "release_tag is required when upload_to_release=true for manual runs." >&2
-          exit 1
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -228,6 +211,16 @@ jobs:
           ls -lah build/app/outputs/flutter-apk || true
           ls -lah build/app/outputs/bundle/release || true
 
+      - name: Resolve release metadata
+        id: release_meta
+        if: steps.params.outputs.upload_to_release == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_name="$(date -u '+%Y%m%d-%H%M%S')"
+          echo "tag=$release_name" >> "$GITHUB_OUTPUT"
+          echo "name=$release_name" >> "$GITHUB_OUTPUT"
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -242,7 +235,9 @@ jobs:
         if: steps.params.outputs.upload_to_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.params.outputs.release_tag }}
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: ${{ steps.release_meta.outputs.name }}
+          target_commitish: ${{ github.sha }}
           generate_release_notes: true
           fail_on_unmatched_files: false
           files: |
