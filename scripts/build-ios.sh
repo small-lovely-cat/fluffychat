@@ -64,6 +64,7 @@ rm -f apple_please_fix_your_coreutils
 }
 
 ### Make release build ###
+bash ./scripts/generate-ios-emoji-assets.sh
 flutter build ipa --release
 
 ### [optional] Install release build ###

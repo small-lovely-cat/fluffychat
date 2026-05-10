@@ -73,6 +73,11 @@ web/pkg/vodozemac_bindings_dart_bg.wasm
 web/pkg/vodozemac_bindings_dart.js
 web/native_executor.js*
 
+# Generated iOS emoji raster assets
+assets/generated/ios_emoji_webp/*.webp
+assets/generated/ios_emoji_webp/.emoji_stamp.json
+assets/generated/ios_emoji_webp/emoji_manifest.json
+
 # Local toolchain caches
 /.bundle-home/
 /.bundle-home-ruby4/

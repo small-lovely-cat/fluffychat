@@ -3,6 +3,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 
+import 'emoji_asset_registry.dart';
+import 'emoji_glyph.dart';
 import 'latest_emoji_set.dart';
 
 final Set<String> _latestEmojiLookup = Set.unmodifiable({
@@ -49,6 +51,7 @@ List<InlineSpan> buildEmojiAwareTextSpans(
   String? semanticsIdentifier,
   Locale? locale,
   bool? spellOut,
+  bool allowWidgetSpans = true,
 }) {
   if (text.isEmpty) {
     return [
@@ -96,6 +99,25 @@ List<InlineSpan> buildEmojiAwareTextSpans(
 
   for (final grapheme in Characters(text)) {
     final isEmoji = isLatestEmojiGrapheme(grapheme);
+    final emojiAssetPath = allowWidgetSpans
+        ? resolveGeneratedEmojiAssetPath(grapheme)
+        : null;
+    if (emojiAssetPath != null) {
+      flushBuffer();
+      spans.add(
+        _buildEmojiWidgetSpan(
+          emoji: grapheme,
+          textStyle: textStyle,
+          emojiStyle: emojiStyle,
+          recognizer: recognizer,
+          mouseCursor: mouseCursor,
+          onEnter: onEnter,
+          onExit: onExit,
+        ),
+      );
+      bufferIsEmoji = null;
+      continue;
+    }
     if (bufferIsEmoji == null) {
       bufferIsEmoji = isEmoji;
       buffer.write(grapheme);
@@ -111,6 +133,40 @@ List<InlineSpan> buildEmojiAwareTextSpans(
   }
   flushBuffer();
   return spans;
+}
+
+InlineSpan _buildEmojiWidgetSpan({
+  required String emoji,
+  required TextStyle? textStyle,
+  required TextStyle emojiStyle,
+  GestureRecognizer? recognizer,
+  MouseCursor? mouseCursor,
+  void Function(PointerEnterEvent event)? onEnter,
+  void Function(PointerExitEvent event)? onExit,
+}) {
+  final effectiveStyle = (textStyle ?? const TextStyle()).merge(emojiStyle);
+  final fontSize = effectiveStyle.fontSize ?? textStyle?.fontSize ?? 14;
+
+  Widget child = EmojiGlyph(emoji, style: effectiveStyle, dimension: fontSize);
+
+  if (mouseCursor != null || onEnter != null || onExit != null) {
+    child = MouseRegion(
+      cursor: mouseCursor ?? MouseCursor.defer,
+      onEnter: onEnter,
+      onExit: onExit,
+      child: child,
+    );
+  }
+
+  if (recognizer is TapGestureRecognizer && recognizer.onTap != null) {
+    child = GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: recognizer.onTap,
+      child: child,
+    );
+  }
+
+  return WidgetSpan(alignment: PlaceholderAlignment.middle, child: child);
 }
 
 InlineSpan buildEmojiAwareLinkifySpan({

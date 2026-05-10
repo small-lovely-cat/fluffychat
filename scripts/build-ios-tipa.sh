@@ -35,6 +35,7 @@ if [[ -n "${FLUFFYCHAT_NEW_GROUP}" ]]; then
 fi
 
 flutter pub get
+bash ./scripts/generate-ios-emoji-assets.sh
 flutter build ios --release --no-codesign
 
 app_path="${REPO_ROOT}/build/ios/iphoneos/Runner.app"

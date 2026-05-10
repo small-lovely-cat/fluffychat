@@ -101,6 +101,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/generated/ios_emoji_webp/
     - assets/sounds/
     - assets/vodozemac/
   fonts:

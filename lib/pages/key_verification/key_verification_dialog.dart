@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:fluffychat/config/emoji_font.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/utils/emoji/emoji_glyph.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/adaptive_dialog_action.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:fluffychat/widgets/avatar.dart';
@@ -383,7 +384,7 @@ class _Emoji extends StatelessWidget {
     return Column(
       mainAxisSize: .min,
       children: <Widget>[
-        Text(
+        EmojiGlyph(
           emoji.emoji,
           style: kEmojiTextStyle.merge(const TextStyle(fontSize: 50)),
         ),

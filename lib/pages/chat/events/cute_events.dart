@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:fluffychat/config/emoji_font.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/utils/emoji/emoji_glyph.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
 
@@ -39,7 +40,7 @@ class _CuteContentState extends State<CuteContent> {
             mainAxisSize: .min,
             mainAxisAlignment: .center,
             children: [
-              Text(
+              EmojiGlyph(
                 widget.event.text,
                 style: kEmojiTextStyle.merge(const TextStyle(fontSize: 150)),
               ),
@@ -182,7 +183,7 @@ class _CuteOverlayContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox.square(
       dimension: size,
-      child: Text(
+      child: EmojiGlyph(
         emoji,
         style: kEmojiTextStyle.merge(const TextStyle(fontSize: 48)),
       ),

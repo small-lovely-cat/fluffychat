@@ -4,6 +4,7 @@ import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/chat/sticker_picker_dialog.dart';
 import 'package:fluffychat/utils/emoji/latest_emoji_locale.dart';
+import 'package:fluffychat/utils/emoji/platform_emoji_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
 
@@ -38,7 +39,7 @@ class ChatEmojiPicker extends StatelessWidget {
                   Expanded(
                     child: TabBarView(
                       children: [
-                        EmojiPicker(
+                        PlatformEmojiPicker(
                           onEmojiSelected: controller.onEmojiSelected,
                           onBackspacePressed: controller.emojiPickerBackspace,
                           config: Config(

@@ -3,6 +3,7 @@ import 'package:fluffychat/config/app_config.dart';
 import 'package:fluffychat/config/emoji_font.dart';
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/utils/emoji/emoji_glyph.dart';
 import 'package:fluffychat/utils/emoji/emoji_text_renderer.dart';
 import 'package:fluffychat/utils/markdown_context_builder.dart';
 import 'package:fluffychat/widgets/mxc_image.dart';
@@ -249,7 +250,7 @@ class InputBar extends StatelessWidget {
           onTap: () => onSelected(suggestion),
           leading: SizedBox.square(
             dimension: size,
-            child: Text(
+            child: EmojiGlyph(
               suggestion['emoji']!,
               style: kEmojiTextStyle.merge(const TextStyle(fontSize: 16)),
             ),
