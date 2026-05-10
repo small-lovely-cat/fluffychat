@@ -6,6 +6,10 @@ REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
 cd "${REPO_ROOT}"
 
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  export PATH="/opt/homebrew/bin:/usr/local/bin:${PATH}"
+fi
+
 if ! command -v dart >/dev/null 2>&1; then
   echo "dart is required to generate iOS emoji assets." >&2
   exit 1

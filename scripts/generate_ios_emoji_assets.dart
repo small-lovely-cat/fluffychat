@@ -12,6 +12,7 @@ const _defaultLookupOutput = 'lib/utils/emoji/generated_emoji_assets.dart';
 const _defaultHbViewPath = 'hb-view';
 const _defaultCwebpPath = 'cwebp';
 const _defaultRenderSize = 160;
+const _homebrewExecutableDirs = <String>['/opt/homebrew/bin', '/usr/local/bin'];
 
 final _emojiLineRegex = RegExp(
   r"Emoji\('(.+?)', '.*?'(?:, hasSkinTone: (true|false))?\),",
@@ -31,8 +32,8 @@ Future<void> main(List<String> args) async {
   final fontPath = options['--font'] ?? _defaultFontPath;
   final outputDirPath = options['--output-dir'] ?? _defaultOutputDir;
   final lookupOutputPath = options['--lookup-output'] ?? _defaultLookupOutput;
-  final hbViewPath = options['--hb-view'] ?? _defaultHbViewPath;
-  final cwebpPath = options['--cwebp'] ?? _defaultCwebpPath;
+  final requestedHbViewPath = options['--hb-view'] ?? _defaultHbViewPath;
+  final requestedCwebpPath = options['--cwebp'] ?? _defaultCwebpPath;
   final renderSize =
       int.tryParse(options['--render-size'] ?? '$_defaultRenderSize') ??
       _defaultRenderSize;
@@ -50,13 +51,21 @@ Future<void> main(List<String> args) async {
     }
   }
 
-  if (!_commandExists(hbViewPath)) {
-    stderr.writeln('Required command not found: $hbViewPath');
+  final hbViewPath = _resolveExecutablePath(requestedHbViewPath);
+  if (hbViewPath == null) {
+    stderr.writeln(
+      'Required command not found: $requestedHbViewPath. '
+      'Install Homebrew formula "harfbuzz" or pass --hb-view <path>.',
+    );
     exitCode = 69;
     return;
   }
-  if (!_commandExists(cwebpPath)) {
-    stderr.writeln('Required command not found: $cwebpPath');
+  final cwebpPath = _resolveExecutablePath(requestedCwebpPath);
+  if (cwebpPath == null) {
+    stderr.writeln(
+      'Required command not found: $requestedCwebpPath. '
+      'Install Homebrew formula "webp" or pass --cwebp <path>.',
+    );
     exitCode = 69;
     return;
   }
@@ -277,6 +286,26 @@ String _escapeDartString(String value) {
 bool _commandExists(String command) {
   final result = Process.runSync('/usr/bin/which', [command]);
   return result.exitCode == 0;
+}
+
+String? _resolveExecutablePath(String command) {
+  if (_looksLikePath(command)) {
+    return File(command).existsSync() ? command : null;
+  }
+  if (_commandExists(command)) {
+    return command;
+  }
+  for (final candidate in _homebrewExecutableDirs) {
+    final resolved = File('$candidate/$command');
+    if (resolved.existsSync()) {
+      return resolved.path;
+    }
+  }
+  return null;
+}
+
+bool _looksLikePath(String value) {
+  return value.contains(Platform.pathSeparator) || value.startsWith('.');
 }
 
 const _usage = '''

@@ -98,6 +98,23 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Install emoji rendering tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="/opt/homebrew/bin:/usr/local/bin:${PATH}"
+
+          if ! command -v hb-view >/dev/null 2>&1; then
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install harfbuzz
+          fi
+
+          if ! command -v cwebp >/dev/null 2>&1; then
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install webp
+          fi
+
+          hb-view --version
+          cwebp -version
+
       - name: Build TrollStore TIPA
         shell: bash
         env:
