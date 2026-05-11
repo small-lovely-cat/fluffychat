@@ -3,6 +3,7 @@ import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/beautify_string_extension.dart';
+import 'package:fluffychat/utils/httpdns/httpdns_types.dart';
 import 'package:fluffychat/utils/platform_infos.dart';
 import 'package:fluffychat/widgets/layouts/max_width_body.dart';
 import 'package:fluffychat/widgets/matrix.dart';
@@ -89,6 +90,53 @@ class SettingsSecurityView extends StatelessWidget {
                         onTap: controller.setAppLockAction,
                       ),
                   },
+                  Divider(color: theme.dividerColor),
+                  ListTile(
+                    title: Text(
+                      'HTTPDNS',
+                      style: TextStyle(
+                        color: theme.colorScheme.secondary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Text(
+                      controller.httpDnsProviderDescription(context),
+                    ),
+                  ),
+                  ListTile(
+                    title: Material(
+                      borderRadius: BorderRadius.circular(
+                        AppConfig.borderRadius / 2,
+                      ),
+                      color: theme.colorScheme.onInverseSurface,
+                      child: DropdownButton<HttpDnsProvider>(
+                        isExpanded: true,
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        borderRadius: BorderRadius.circular(
+                          AppConfig.borderRadius / 2,
+                        ),
+                        underline: const SizedBox.shrink(),
+                        value: controller.httpDnsProvider,
+                        items: HttpDnsProvider.values
+                            .map(
+                              (provider) => DropdownMenuItem(
+                                value: provider,
+                                child: Text(provider.displayName),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: controller.changeHttpDnsProvider,
+                      ),
+                    ),
+                  ),
+                  ListTile(
+                    trailing: const Icon(Icons.chevron_right_outlined),
+                    title: const Text('Edit domain lists'),
+                    subtitle: Text(
+                      controller.httpDnsDomainListsSummary(context),
+                    ),
+                    onTap: () => controller.editHttpDnsDomainLists(context),
+                  ),
                   Divider(color: theme.dividerColor),
                   ListTile(
                     title: Text(

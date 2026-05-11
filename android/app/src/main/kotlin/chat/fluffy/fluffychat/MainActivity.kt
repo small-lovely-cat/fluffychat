@@ -1,5 +1,6 @@
 package chat.fluffy.fluffychat
 
+import android.app.Application
 import android.content.Context
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -15,6 +16,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        HttpDnsChannel.attach(application as Application, flutterEngine)
         AppLockAuthChannel.attach(this, flutterEngine)
     }
 
@@ -23,6 +25,7 @@ class MainActivity : FlutterFragmentActivity() {
 
         fun provideEngine(context: Context): FlutterEngine {
             val eng = engine ?: FlutterEngine(context, emptyArray(), true, false)
+            HttpDnsChannel.attach(context.applicationContext as Application, eng)
             engine = eng
             return eng
         }

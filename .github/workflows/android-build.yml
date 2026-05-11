@@ -60,6 +60,10 @@ jobs:
     # runs-on: self-hosted
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      ALIYUN_HTTPDNS_ACCOUNT_ID: ${{ secrets.ALIYUN_HTTPDNS_ACCOUNT_ID }}
+      ALIYUN_HTTPDNS_ACCESS_KEY_ID: ${{ secrets.ALIYUN_HTTPDNS_ACCESS_KEY_ID }}
+      ALIYUN_HTTPDNS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_HTTPDNS_ACCESS_KEY_SECRET }}
     environment:
       name: android-build
       deployment: false

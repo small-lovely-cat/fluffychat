@@ -1,6 +1,8 @@
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/app_lock_biometric_service.dart';
+import 'package:fluffychat/utils/httpdns/httpdns_manager.dart';
+import 'package:fluffychat/utils/httpdns/httpdns_types.dart';
 import 'package:fluffychat/utils/platform_infos.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_modal_action_popup.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
@@ -11,6 +13,7 @@ import 'package:fluffychat/widgets/matrix.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
 
+import 'httpdns_domain_lists_dialog.dart';
 import 'settings_security_view.dart';
 
 class SettingsSecurity extends StatefulWidget {
@@ -21,6 +24,12 @@ class SettingsSecurity extends StatefulWidget {
 }
 
 class SettingsSecurityController extends State<SettingsSecurity> {
+  /// Builds the app lock subtitle shown in the security menu.
+  ///
+  /// Parameters:
+  ///   context: The current widget context.
+  /// Returns:
+  ///   A localized subtitle describing the active app lock method.
   String appLockSubtitle(BuildContext context) {
     final l10n = L10n.of(context);
     final appLock = AppLock.of(context);
@@ -199,6 +208,125 @@ class SettingsSecurityController extends State<SettingsSecurity> {
     return AppLockAuthMethod.pin;
   }
 
+  /// Returns the currently selected HTTPDNS provider.
+  ///
+  /// Returns:
+  ///   The persisted provider selection for the current device.
+  HttpDnsProvider get httpDnsProvider =>
+      HttpDnsManager.instance.selectedProvider;
+
+  /// Returns a short description for the HTTPDNS provider section.
+  ///
+  /// Parameters:
+  ///   context: The current widget context.
+  /// Returns:
+  ///   A platform-aware description for the HTTPDNS feature.
+  String httpDnsProviderDescription(BuildContext context) {
+    if (PlatformInfos.isAndroid) {
+      return 'Routes Android requests through the selected HTTPDNS provider. Matrix homeserver domains are added to the keep-alive and preload lists automatically.';
+    }
+    if (PlatformInfos.isIOS) {
+      return 'The iOS HTTPDNS bridge is reserved for a future release. This version only activates HTTPDNS on Android.';
+    }
+    return 'HTTPDNS is currently available on Android builds only.';
+  }
+
+  /// Summarizes the current HTTPDNS domain list configuration.
+  ///
+  /// Parameters:
+  ///   context: The current widget context.
+  /// Returns:
+  ///   A short summary for the domain list editor entry.
+  String httpDnsDomainListsSummary(BuildContext context) {
+    final allClients = Matrix.of(context).widget.clients;
+    final httpDnsManager = HttpDnsManager.instance;
+    final autoAddedDomains = httpDnsManager.managedDomains(allClients);
+    final keepAliveCount = httpDnsManager
+        .effectiveKeepAliveDomains(allClients)
+        .length;
+    final preloadCount = httpDnsManager
+        .effectivePreloadDomains(allClients)
+        .length;
+    final autoAddedSummary = autoAddedDomains.isEmpty
+        ? 'No homeserver domains have been auto-added yet.'
+        : 'Auto-added homeserver domains: ${autoAddedDomains.join(', ')}';
+    return 'Keep-alive: $keepAliveCount, preload: $preloadCount. $autoAddedSummary';
+  }
+
+  /// Updates the selected HTTPDNS provider and syncs it to native Android.
+  ///
+  /// Parameters:
+  ///   provider: The newly selected HTTPDNS provider.
+  /// Returns:
+  ///   A future that completes after the native bridge has been updated.
+  Future<void> changeHttpDnsProvider(HttpDnsProvider? provider) async {
+    if (provider == null) {
+      return;
+    }
+    final allClients = Matrix.of(context).widget.clients;
+    await AppSettings.httpDnsProvider.setItem(provider.storageValue);
+    final status = await HttpDnsManager.instance.applyCurrentConfiguration(
+      allClients,
+    );
+    if (!mounted) {
+      return;
+    }
+    await _showHttpDnsStatusMessage(status);
+    setState(() {});
+  }
+
+  /// Opens the HTTPDNS domain editor and persists the updated user lists.
+  ///
+  /// Parameters:
+  ///   context: The current widget context.
+  /// Returns:
+  ///   A future that completes after the new lists are stored and applied.
+  Future<void> editHttpDnsDomainLists(BuildContext context) async {
+    final httpDnsManager = HttpDnsManager.instance;
+    final allClients = Matrix.of(context).widget.clients;
+    final result = await showHttpDnsDomainListsDialog(
+      context: context,
+      keepAliveDomains: httpDnsManager.userKeepAliveDomains,
+      preloadDomains: httpDnsManager.userPreloadDomains,
+      autoAddedDomains: httpDnsManager.managedDomains(allClients),
+    );
+    if (result == null) {
+      return;
+    }
+
+    await AppSettings.httpDnsKeepAliveDomains.setItem(result.keepAliveDomains);
+    await AppSettings.httpDnsPreloadDomains.setItem(result.preloadDomains);
+    final status = await httpDnsManager.applyCurrentConfiguration(allClients);
+    if (!mounted) {
+      return;
+    }
+    await _showHttpDnsStatusMessage(status);
+    setState(() {});
+  }
+
+  /// Shows a status dialog when the native HTTPDNS bridge reports a warning.
+  ///
+  /// Parameters:
+  ///   status: The last status returned by the native bridge.
+  /// Returns:
+  ///   A future that completes after the alert is dismissed.
+  Future<void> _showHttpDnsStatusMessage(HttpDnsStatus status) async {
+    final message = status.message;
+    if (message == null || message.isEmpty) {
+      return;
+    }
+    await showOkAlertDialog(
+      useRootNavigator: false,
+      context: context,
+      title: 'HTTPDNS',
+      message: message,
+    );
+  }
+
+  /// Starts the account deletion flow for the current Matrix account.
+  ///
+  /// Returns:
+  ///   A future that completes after the deletion flow finishes.
   Future<void> deleteAccountAction() async {
     final l10n = L10n.of(context);
     final matrix = Matrix.of(context);
@@ -247,8 +375,18 @@ class SettingsSecurityController extends State<SettingsSecurity> {
     }
   }
 
+  /// Starts the dehydrated device export flow for the active account.
+  ///
+  /// Returns:
+  ///   A future that completes after the export dialog closes.
   Future<void> dehydrateAction() => Matrix.of(context).dehydrateAction(context);
 
+  /// Updates the preferred key-sharing policy for the active Matrix client.
+  ///
+  /// Parameters:
+  ///   shareKeysWith: The newly selected key-sharing strategy.
+  /// Returns:
+  ///   A future that completes after the choice has been stored.
   Future<void> changeShareKeysWith(ShareKeysWith? shareKeysWith) async {
     if (shareKeysWith == null) return;
     AppSettings.shareKeysWith.setItem(shareKeysWith.name);

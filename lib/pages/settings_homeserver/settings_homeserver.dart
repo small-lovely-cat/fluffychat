@@ -1,8 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-
-import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 
 import '../../widgets/matrix.dart';
@@ -36,7 +34,7 @@ class SettingsHomeserverController extends State<SettingsHomeserver> {
       );
     }
 
-    final serverVersionResult = await http.get(
+    final serverVersionResult = await httpClient.get(
       federationBaseUrl.resolveUri(Uri(path: '/_matrix/federation/v1/version')),
     );
     final {

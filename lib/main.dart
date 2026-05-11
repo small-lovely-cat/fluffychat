@@ -16,6 +16,7 @@ import 'package:universal_html/universal_html.dart' as web;
 
 import 'config/setting_keys.dart';
 import 'utils/background_push.dart';
+import 'utils/httpdns/httpdns_manager.dart';
 import 'widgets/fluffy_chat_app.dart';
 
 ReceivePort? mainIsolateReceivePort;
@@ -48,6 +49,7 @@ void main() async {
 
   final store = await AppSettings.init();
   Logs().i('Welcome to ${AppSettings.applicationName.value} <3');
+  await HttpDnsManager.instance.applyStoredConfiguration();
 
   if (!_vodozemacInitialized) {
     await vod.init(wasmPath: './assets/assets/vodozemac/');

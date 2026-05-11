@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:fluffychat/config/isrg_x1.dart';
+import 'package:fluffychat/utils/httpdns/httpdns_manager.dart';
 import 'package:fluffychat/utils/platform_infos.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
@@ -28,7 +29,18 @@ class CustomHttpClient {
       }
     }
 
-    return HttpClient(context: context);
+    final httpClient = HttpClient(context: context);
+    if (PlatformInfos.isAndroid) {
+      httpClient.connectionFactory = (uri, proxyHost, proxyPort) async {
+        final connectHost =
+            proxyHost ??
+            await HttpDnsManager.instance.resolveConnectHost(uri.host);
+        final connectPort = proxyPort ?? uri.port;
+        return Socket.startConnect(connectHost, connectPort);
+      };
+    }
+
+    return httpClient;
   }
 
   static http.Client createHTTPClient() => retry.RetryClient(

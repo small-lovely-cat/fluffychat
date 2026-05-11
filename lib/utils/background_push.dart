@@ -33,7 +33,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_new_badger/flutter_new_badger.dart';
-import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
 import 'package:unifiedpush/unifiedpush.dart';
 import 'package:unifiedpush_ui/unifiedpush_ui.dart';
@@ -41,6 +40,7 @@ import 'package:unifiedpush_ui/unifiedpush_ui.dart';
 import '../config/app_config.dart';
 import '../config/setting_keys.dart';
 import '../widgets/matrix.dart';
+import 'custom_http_client.dart';
 import 'platform_infos.dart';
 
 class BackgroundPush {
@@ -389,18 +389,22 @@ class BackgroundPush {
     var endpoint =
         'https://matrix.gateway.unifiedpush.org/_matrix/push/v1/notify';
     try {
-      final url = Uri.parse(newEndpoint)
-          .replace(path: '/_matrix/push/v1/notify', query: '')
-          .toString()
-          .split('?')
-          .first;
-      final res = json.decode(
-        utf8.decode((await http.get(Uri.parse(url))).bodyBytes),
-      );
-      if (res['gateway'] == 'matrix' ||
-          (res['unifiedpush'] is Map &&
-              res['unifiedpush']['gateway'] == 'matrix')) {
-        endpoint = url;
+      final httpClient = CustomHttpClient.createHTTPClient();
+      try {
+        final url = Uri.parse(newEndpoint)
+            .replace(path: '/_matrix/push/v1/notify', query: '')
+            .toString()
+            .split('?')
+            .first;
+        final response = await httpClient.get(Uri.parse(url));
+        final res = json.decode(utf8.decode(response.bodyBytes));
+        if (res['gateway'] == 'matrix' ||
+            (res['unifiedpush'] is Map &&
+                res['unifiedpush']['gateway'] == 'matrix')) {
+          endpoint = url;
+        }
+      } finally {
+        httpClient.close();
       }
     } catch (e) {
       Logs().i(

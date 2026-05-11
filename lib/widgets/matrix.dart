@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:desktop_notifications/desktop_notifications.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/utils/client_manager.dart';
+import 'package:fluffychat/utils/httpdns/httpdns_manager.dart';
 import 'package:fluffychat/utils/init_with_restore.dart';
 import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_file_extension.dart';
 import 'package:fluffychat/utils/platform_infos.dart';
@@ -162,6 +163,11 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
                   _loginClientCandidate!.clientName,
                   store,
                 );
+                unawaited(
+                  HttpDnsManager.instance.applyCurrentConfiguration(
+                    widget.clients,
+                  ),
+                );
                 _registerSubs(_loginClientCandidate!.clientName);
                 _loginClientCandidate = null;
                 FluffyChatApp.router.go('/backup');
@@ -263,6 +269,9 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
           widget.clients.remove(c);
           ClientManager.removeClientNameFromStore(c.clientName, store);
           InitWithRestoreExtension.deleteSessionBackup(name);
+          unawaited(
+            HttpDnsManager.instance.applyCurrentConfiguration(widget.clients),
+          );
 
           if (loggedInWithMultipleClients) {
             final snackbarContext =
@@ -308,6 +317,9 @@ class MatrixState extends State<Matrix> with WidgetsBindingObserver {
     for (final c in widget.clients) {
       _registerSubs(c.clientName);
     }
+    unawaited(
+      HttpDnsManager.instance.applyCurrentConfiguration(widget.clients),
+    );
 
     if (PlatformInfos.isMobile) {
       backgroundPush = BackgroundPush(

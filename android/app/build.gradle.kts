@@ -1,6 +1,9 @@
 import java.util.Properties
 import java.io.FileInputStream
 
+fun asBuildConfigString(value: String): String =
+    "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -16,7 +19,10 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4") // For flutter_local_notifications // Workaround for: https://github.com/MaikuB/flutter_local_notifications/issues/2286
     implementation("androidx.core:core-ktx:1.17.0") // For Android Auto
     implementation("androidx.biometric:biometric:1.1.0")
+    implementation("com.alibaba.pdns:alidns-android-sdk:2.3.0")
+    implementation("com.google.code.gson:gson:2.8.5")
     implementation("com.github.Tencent.soter:soter-wrapper:2.0.7")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }
 
 
@@ -80,6 +86,16 @@ android {
             ?.split(",")
             ?.map { it.trim() }
             ?.filter { it.isNotEmpty() }
+    val aliyunHttpDnsAccountId =
+        providers.environmentVariable("ALIYUN_HTTPDNS_ACCOUNT_ID").orElse("").get()
+    val aliyunHttpDnsAccessKeyId =
+        providers.environmentVariable("ALIYUN_HTTPDNS_ACCESS_KEY_ID").orElse("").get()
+    val aliyunHttpDnsAccessKeySecret =
+        providers.environmentVariable("ALIYUN_HTTPDNS_ACCESS_KEY_SECRET").orElse("").get()
+    val aliyunHttpDnsCredentialsConfigured =
+        aliyunHttpDnsAccountId.isNotBlank() &&
+            aliyunHttpDnsAccessKeyId.isNotBlank() &&
+            aliyunHttpDnsAccessKeySecret.isNotBlank()
 
     defaultConfig {
         applicationId = "chat.fluffy.fluffychat"
@@ -87,6 +103,26 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        buildConfigField(
+            "String",
+            "ALIYUN_HTTPDNS_ACCOUNT_ID",
+            asBuildConfigString(aliyunHttpDnsAccountId),
+        )
+        buildConfigField(
+            "String",
+            "ALIYUN_HTTPDNS_ACCESS_KEY_ID",
+            asBuildConfigString(aliyunHttpDnsAccessKeyId),
+        )
+        buildConfigField(
+            "String",
+            "ALIYUN_HTTPDNS_ACCESS_KEY_SECRET",
+            asBuildConfigString(aliyunHttpDnsAccessKeySecret),
+        )
+        buildConfigField(
+            "boolean",
+            "ALIYUN_HTTPDNS_CREDENTIALS_CONFIGURED",
+            aliyunHttpDnsCredentialsConfigured.toString(),
+        )
         ndk { // Workaround for https://github.com/flutter/flutter/issues/162153#issuecomment-2612443642
             val defaultAbiFilters = listOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86")
             abiFilters += configuredAbiFilters ?: defaultAbiFilters

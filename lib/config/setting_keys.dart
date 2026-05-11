@@ -74,7 +74,16 @@ enum AppSettings<T> {
   supportBannerOptOut<bool>('chat.fluffy.support_banner_opt_out', false),
   webNotificationSound<bool>('chat.fluffy.web_notification_sound', true),
   chatFilter<String>('chat.fluffy.chat_filter', 'allChats'),
-  appLockAuthMethod<String>('chat.fluffy.app_lock_auth_method', 'pin');
+  appLockAuthMethod<String>('chat.fluffy.app_lock_auth_method', 'pin'),
+  httpDnsProvider<String>('chat.fluffy.http_dns_provider', 'none'),
+  httpDnsKeepAliveDomains<List<String>>(
+    'chat.fluffy.http_dns_keep_alive_domains',
+    <String>[],
+  ),
+  httpDnsPreloadDomains<List<String>>(
+    'chat.fluffy.http_dns_preload_domains',
+    <String>[],
+  );
 
   final String key;
   final T defaultValue;
@@ -211,4 +220,22 @@ extension AppSettingsDoubleExtension on AppSettings<double> {
   }
 
   Future<void> setItem(double value) => AppSettings.store.setDouble(key, value);
+}
+
+extension AppSettingsStringListExtension on AppSettings<List<String>> {
+  List<String> get value {
+    final value = Result(() => AppSettings.store.getStringList(key));
+    final error = value.asError;
+    if (error != null) {
+      Logs().e(
+        'Unable to fetch $key from storage. Removing entry...',
+        error.error,
+        error.stackTrace,
+      );
+    }
+    return value.asValue?.value ?? defaultValue;
+  }
+
+  Future<void> setItem(List<String> value) =>
+      AppSettings.store.setStringList(key, value);
 }
