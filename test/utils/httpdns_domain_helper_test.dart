@@ -6,6 +6,7 @@ void main() {
     final normalizedDomains = HttpDnsDomainHelper.normalizeDomains([
       'https://Matrix.EXAMPLE.com:8448/_matrix',
       'matrix.example.com',
+      'ID.MAHIRO.ONLINE.',
       'media.example.com/path',
       '192.168.0.1',
       '',
@@ -13,7 +14,14 @@ void main() {
 
     expect(
       normalizedDomains,
-      equals(['matrix.example.com', 'media.example.com']),
+      equals(['matrix.example.com', 'id.mahiro.online', 'media.example.com']),
+    );
+  });
+
+  test('normalizeHost strips trailing dots from runtime lookup hosts', () {
+    expect(
+      HttpDnsDomainHelper.normalizeHost('Mas.Mahiro.Online.'),
+      equals('mas.mahiro.online'),
     );
   });
 

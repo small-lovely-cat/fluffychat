@@ -3,6 +3,7 @@ package chat.fluffy.fluffychat
 import android.app.Application
 import android.util.Log
 import com.alibaba.pdns.DNSResolver
+import java.util.Locale
 
 class AndroidHttpDnsManager private constructor(
     private val application: Application,
@@ -62,7 +63,7 @@ class AndroidHttpDnsManager private constructor(
         if (!ensureAliyunInitializedLocked()) {
             return emptyList()
         }
-        resolveIpv4AddressesLocked(host)
+        resolveIpv4AddressesForCandidatesLocked(host)
     }
 
     /**
@@ -206,6 +207,77 @@ class AndroidHttpDnsManager private constructor(
         } else {
             listOf(singleAddress)
         }
+    }
+
+    /**
+     * Tries all normalized variants of one host until the SDK returns IPv4 addresses.
+     *
+     * @param originalHost The host received from Flutter before normalization.
+     * @return The first successful IPv4 address list, or an empty list when all variants fail.
+     */
+    private fun resolveIpv4AddressesForCandidatesLocked(originalHost: String): List<String> {
+        val lookupCandidates = buildLookupCandidates(originalHost)
+        if (lookupCandidates.isEmpty()) {
+            Log.w(LOG_TAG, "Skip HTTPDNS lookup for invalid host: $originalHost")
+            return emptyList()
+        }
+
+        for (candidateHost in lookupCandidates) {
+            val resolvedAddresses = resolveIpv4AddressesLocked(candidateHost)
+            if (resolvedAddresses.isNotEmpty()) {
+                return resolvedAddresses
+            }
+        }
+
+        logLookupFailureLocked(originalHost, lookupCandidates)
+        return emptyList()
+    }
+
+    /**
+     * Builds safe host variants for SDK lookup.
+     *
+     * @param originalHost The raw host from Flutter.
+     * @return Distinct lookup candidates with trailing dots removed first.
+     */
+    private fun buildLookupCandidates(originalHost: String): List<String> {
+        val trimmedHost = originalHost.trim()
+        if (trimmedHost.isBlank()) {
+            return emptyList()
+        }
+
+        val normalizedHost = trimmedHost
+            .trimEnd('.')
+            .lowercase(Locale.US)
+        if (normalizedHost.isBlank()) {
+            return emptyList()
+        }
+
+        return buildList {
+            add(normalizedHost)
+            if (trimmedHost != normalizedHost) {
+                add(trimmedHost)
+            }
+        }.distinct()
+    }
+
+    /**
+     * Prints the latest SDK request report after lookup failure for easier diagnosis.
+     *
+     * @param originalHost The raw host that Flutter asked to resolve.
+     * @param lookupCandidates Candidate hosts already tried against the SDK.
+     */
+    private fun logLookupFailureLocked(
+        originalHost: String,
+        lookupCandidates: List<String>,
+    ) {
+        val requestReport = runCatching {
+            DNSResolver.getInstance().getRequestReportInfo()
+        }.getOrNull().orEmpty()
+        Log.w(
+            LOG_TAG,
+            "HTTPDNS returned no IPv4 address for host=$originalHost " +
+                "candidates=$lookupCandidates requestReport=$requestReport",
+        )
     }
 
     /**

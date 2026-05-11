@@ -22,6 +22,15 @@ abstract final class HttpDnsDomainHelper {
   static String toEditableInput(Iterable<String> domains) =>
       normalizeDomains(domains).join('\n');
 
+  /// Normalizes a single host name for runtime HTTPDNS lookups.
+  ///
+  /// Parameters:
+  ///   rawHost: The original request host received from a Uri.
+  /// Returns:
+  ///   A normalized host without schemes, ports, or trailing dots.
+  static String? normalizeHost(String rawHost) =>
+      _normalizeSingleDomain(rawHost);
+
   /// Normalizes a collection of domain-like strings.
   ///
   /// Parameters:

@@ -4,6 +4,9 @@ import java.io.FileInputStream
 fun asBuildConfigString(value: String): String =
     "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
+fun readBuildSecret(name: String): String =
+    providers.environmentVariable(name).orElse("").get().trim()
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -90,12 +93,10 @@ android {
             ?.split(",")
             ?.map { it.trim() }
             ?.filter { it.isNotEmpty() }
-    val aliyunHttpDnsAccountId =
-        providers.environmentVariable("ALIYUN_HTTPDNS_ACCOUNT_ID").orElse("").get()
-    val aliyunHttpDnsAccessKeyId =
-        providers.environmentVariable("ALIYUN_HTTPDNS_ACCESS_KEY_ID").orElse("").get()
+    val aliyunHttpDnsAccountId = readBuildSecret("ALIYUN_HTTPDNS_ACCOUNT_ID")
+    val aliyunHttpDnsAccessKeyId = readBuildSecret("ALIYUN_HTTPDNS_ACCESS_KEY_ID")
     val aliyunHttpDnsAccessKeySecret =
-        providers.environmentVariable("ALIYUN_HTTPDNS_ACCESS_KEY_SECRET").orElse("").get()
+        readBuildSecret("ALIYUN_HTTPDNS_ACCESS_KEY_SECRET")
     val aliyunHttpDnsCredentialsConfigured =
         aliyunHttpDnsAccountId.isNotBlank() &&
             aliyunHttpDnsAccessKeyId.isNotBlank() &&

@@ -102,29 +102,31 @@ class HttpDnsManager {
   ///   host: The original request host.
   /// Returns:
   ///   The IP address returned by HTTPDNS, or the original host when inactive.
-  /// Throws:
-  ///   SocketException: When HTTPDNS is active but cannot resolve the host.
   Future<String> resolveConnectHost(String host) async {
-    if (!_shouldUseHttpDns(host)) {
+    final normalizedHost = HttpDnsDomainHelper.normalizeHost(host);
+    final lookupHost = normalizedHost ?? host;
+
+    if (!_shouldUseHttpDns(lookupHost)) {
       return host;
     }
     if (selectedProvider == HttpDnsProvider.none) {
       return host;
     }
 
-    final ipv4Addresses = await _lookupIpv4Addresses(host);
+    final ipv4Addresses = await _lookupIpv4Addresses(lookupHost);
     if (ipv4Addresses.isNotEmpty) {
       return ipv4Addresses.first;
     }
 
     if (_lastStatus.isActive) {
-      final message =
-          'HTTPDNS is enabled but did not return an IPv4 address for $host.';
-      Logs().e(message);
-      throw SocketException(message);
+      Logs().w(
+        'HTTPDNS returned no IPv4 address for original host "$host" '
+        '(lookup host "$lookupHost"). Falling back to system DNS. '
+        'Native status: ${_lastStatus.message ?? 'no extra detail'}.',
+      );
     }
 
-    return host;
+    return lookupHost;
   }
 
   /// Applies the current Flutter-side HTTPDNS configuration to native code.
@@ -178,14 +180,17 @@ class HttpDnsManager {
   /// Returns:
   ///   A list of resolved IPv4 addresses, or an empty list when unavailable.
   Future<List<String>> _lookupIpv4Addresses(String host) async {
-    if (!PlatformInfos.isAndroid || selectedProvider == HttpDnsProvider.none) {
+    final normalizedHost = HttpDnsDomainHelper.normalizeHost(host);
+    if (!PlatformInfos.isAndroid ||
+        selectedProvider == HttpDnsProvider.none ||
+        normalizedHost == null) {
       return const [];
     }
 
     try {
       final addresses = await _channel.invokeListMethod<String>(
         'lookup',
-        <String, Object>{'host': host},
+        <String, Object>{'host': normalizedHost},
       );
       return addresses
               ?.where((address) => address.trim().isNotEmpty)
