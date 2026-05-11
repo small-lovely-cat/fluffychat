@@ -87,3 +87,5 @@ assets/generated/ios_emoji_webp/emoji_manifest.json
 /.tooling/
 /vendor/bundle/
 /vendor/bundle-ruby4/
+/.aiassistant/rules
+/android_Pdns_Demo/
