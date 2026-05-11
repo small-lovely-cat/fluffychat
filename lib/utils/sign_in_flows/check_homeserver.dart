@@ -13,6 +13,52 @@ import 'package:go_router/go_router.dart';
 import 'package:matrix/matrix.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+/// Performs the login homeserver probe and falls back when optional OIDC
+/// metadata discovery is misconfigured on the server.
+///
+/// Parameters:
+///   client: The temporary Matrix login client used for discovery requests.
+///   homeserver: The homeserver URI entered by the user.
+///   fetchAuthMetadata: Whether to request Matrix Native OIDC metadata.
+/// Returns:
+///   The homeserver discovery result from the Matrix SDK.
+Future<
+  (
+    DiscoveryInformation?,
+    GetVersionsResponse,
+    List<LoginFlow>,
+    GetAuthMetadataResponse?,
+  )
+>
+_checkHomeserverForLogin(
+  Client client,
+  Uri homeserver, {
+  required bool fetchAuthMetadata,
+}) async {
+  try {
+    return await client.checkHomeserver(
+      homeserver,
+      fetchAuthMetadata: fetchAuthMetadata,
+    );
+  } catch (error, stackTrace) {
+    Logs().w(
+      'Homeserver probe failed for input=$homeserver '
+      'resolved=${client.homeserver} fetchAuthMetadata=$fetchAuthMetadata',
+      error,
+      stackTrace,
+    );
+    if (!fetchAuthMetadata) {
+      rethrow;
+    }
+
+    Logs().w(
+      'Retrying homeserver probe without Matrix Native OIDC metadata for '
+      '$homeserver because the optional OIDC discovery request failed.',
+    );
+    return client.checkHomeserver(homeserver, fetchAuthMetadata: false);
+  }
+}
+
 Future<void> connectToHomeserverFlow(
   PublicHomeserverData homeserverData,
   BuildContext context,
@@ -28,9 +74,11 @@ Future<void> connectToHomeserverFlow(
     }
     final l10n = L10n.of(context);
     final client = await Matrix.of(context).getLoginClient();
-    final (_, _, loginFlows, authMetadata) = await client.checkHomeserver(
+    final fetchAuthMetadata = AppSettings.enableMatrixNativeOIDC.value;
+    final (_, _, loginFlows, authMetadata) = await _checkHomeserverForLogin(
+      client,
       homeserver,
-      fetchAuthMetadata: true,
+      fetchAuthMetadata: fetchAuthMetadata,
     );
 
     final regLink = homeserverData.regLink;

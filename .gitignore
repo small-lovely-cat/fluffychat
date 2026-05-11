@@ -7535,3 +7535,4 @@ assets/generated/ios_emoji_webp/emoji_manifest.json
 /.tmp-home/.dartServer/.plugin_manager/b4821253c8e4fd43f475c86940283a1b/analyzer_plugin/bin/plugin.dart
 /.tmp-home/.dartServer/.plugin_manager/b4821253c8e4fd43f475c86940283a1b/analyzer_plugin/pubspec.yaml
 /.tmp-home/.flutter
+/.tmp-home/
