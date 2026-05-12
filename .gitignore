@@ -90,3 +90,5 @@ assets/generated/ios_emoji_webp/emoji_manifest.json
 /.aiassistant/rules
 /android_Pdns_Demo/
 /.tmp-home/
+/android/app/release/
+/android/.kotlin/sessions/

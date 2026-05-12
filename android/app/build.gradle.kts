@@ -1,11 +1,38 @@
 import java.util.Properties
 import java.io.FileInputStream
 
+/**
+ * 将普通字符串转成可写入 BuildConfig 的 Java 字符串字面量。
+ *
+ * @param value 需要写入 BuildConfig 的原始字符串
+ * @return 转义后的 Java 字符串字面量
+ */
 fun asBuildConfigString(value: String): String =
     "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
-fun readBuildSecret(name: String): String =
-    providers.environmentVariable(name).orElse("").get().trim()
+/**
+ * 读取本地构建使用的敏感参数。
+ *
+ * 优先读取系统环境变量，便于 CI 注入；若环境变量为空，则回退到
+ * android/local.properties，便于 Android Studio 本地直接打包。
+ *
+ * @param name 参数名，同时作为环境变量名和 local.properties key
+ * @param localProperties 当前 Android 工程的 local.properties
+ * @return 读取到的参数值；未配置时返回空字符串
+ */
+fun readBuildSecret(name: String, localProperties: Properties): String =
+    providers.environmentVariable(name)
+        .orNull
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+        ?: localProperties.getProperty(name)?.trim().orEmpty()
+
+val localBuildProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use(::load)
+    }
+}
 
 plugins {
     id("com.android.application")
@@ -93,10 +120,12 @@ android {
             ?.split(",")
             ?.map { it.trim() }
             ?.filter { it.isNotEmpty() }
-    val aliyunHttpDnsAccountId = readBuildSecret("ALIYUN_HTTPDNS_ACCOUNT_ID")
-    val aliyunHttpDnsAccessKeyId = readBuildSecret("ALIYUN_HTTPDNS_ACCESS_KEY_ID")
+    val aliyunHttpDnsAccountId =
+        readBuildSecret("ALIYUN_HTTPDNS_ACCOUNT_ID", localBuildProperties)
+    val aliyunHttpDnsAccessKeyId =
+        readBuildSecret("ALIYUN_HTTPDNS_ACCESS_KEY_ID", localBuildProperties)
     val aliyunHttpDnsAccessKeySecret =
-        readBuildSecret("ALIYUN_HTTPDNS_ACCESS_KEY_SECRET")
+        readBuildSecret("ALIYUN_HTTPDNS_ACCESS_KEY_SECRET", localBuildProperties)
     val aliyunHttpDnsCredentialsConfigured =
         aliyunHttpDnsAccountId.isNotBlank() &&
             aliyunHttpDnsAccessKeyId.isNotBlank() &&
