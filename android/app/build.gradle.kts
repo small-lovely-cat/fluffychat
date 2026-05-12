@@ -41,10 +41,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-if (file("google-services.json").exists()) {
-    apply(plugin = "com.google.gms.google-services")
-}
-
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4") // For flutter_local_notifications // Workaround for: https://github.com/MaikuB/flutter_local_notifications/issues/2286
     implementation("androidx.core:core-ktx:1.17.0") // For Android Auto
@@ -53,21 +49,6 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.5")
     implementation("com.github.Tencent.soter:soter-wrapper:2.0.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
-}
-
-
-// Workaround for https://pub.dev/packages/unifiedpush#the-build-fails-because-of-duplicate-classes
-configurations.all {
-    // Use the latest version published: https://central.sonatype.com/artifact/com.google.crypto.tink/tink-android
-    val tink = "com.google.crypto.tink:tink-android:1.17.0"
-    // You can also use the library declaration catalog
-    // val tink = libs.google.tink
-    resolutionStrategy {
-        force(tink)
-        dependencySubstitution {
-            substitute(module("com.google.crypto.tink:tink")).using(module(tink))
-        }
-    }
 }
 
 

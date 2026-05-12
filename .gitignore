@@ -92,3 +92,4 @@ assets/generated/ios_emoji_webp/emoji_manifest.json
 /.tmp-home/
 /android/app/release/
 /android/.kotlin/sessions/
+/android/.gradle-home/

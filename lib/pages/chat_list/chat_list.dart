@@ -380,7 +380,9 @@ class ChatListController extends State<ChatList>
         searchServer = Matrix.of(
           context,
         ).store.getString(_serverStoreNamespace);
-        Matrix.of(context).backgroundPush?.setupPush();
+        // Remote push registration has been removed together with
+        // Firebase and UnifiedPush support.
+        // Matrix.of(context).backgroundPush?.setupPush();
         UpdateNotifier.showUpdateSnackBar(context);
       }
 

@@ -52,47 +52,9 @@ The user is able to send files from the device's file system.
 FluffyChat makes it possible to share the current location via the chat. When the user shares their location, FluffyChat uses the device location service and sends the geo-data via Matrix.
 
 ## <a id="push-notifications" href="#push-notifications">#</a> Push Notifications
-FluffyChat uses the Firebase Cloud Messaging service for push notifications on Android and iOS. This takes place in the following steps:
-1. The matrix server sends the push notification to the FluffyChat Push Gateway
-2. The FluffyChat Push Gateway forwards the message in a different format to Firebase Cloud Messaging
-3. Firebase Cloud Messaging waits until the user's device is online again
-4. The device receives the push notification from Firebase Cloud Messaging and displays it as a notification
-
-The source code of the push gateway can be viewed here:
-[https://github.com/krille-chan/fluffygate](https://github.com/krille-chan/fluffygate)
-
-`event_id_only` is used as the format for the push notification. A typical push notification therefore only contains:
-- Event ID
-- Room ID
-- Unread Count
-- Information about the device that is to receive the message
-
-A typical push notification could look like this:
-```json
-{
-  "notification": {
-    "event_id": "$3957tyerfgewrf384",
-    "room_id": "!slw48wfj34rtnrf:example.com",
-    "counts": {
-      "unread": 2,
-      "missed_calls": 1
-    },
-    "devices": [
-      {
-        "app_id": "chat.fluffy.fluffychat",
-        "pushkey": "V2h5IG9uIGVhcnRoIGRpZCB5b3UgZGVjb2RlIHRoaXM/",
-        "pushkey_ts": 12345678,
-        "data": {},
-        "tweaks": {
-          "sound": "bing"
-        }
-      }
-    ]
-  }
-}
-```
-
-FluffyChat sets the `event_id_only` flag at the Matrix Server. This server is then responsible to send the correct data.
+Firebase Cloud Messaging and UnifiedPush integration have been removed from
+this project. FluffyChat therefore no longer registers remote pushers or
+forwards Matrix notifications through a dedicated push gateway.
 
 
 # <a id="playstore-safety" href="#playstore-safety">#</a> Explanation of FluffyChat's Compliance with Google Play Store's Safety Standards

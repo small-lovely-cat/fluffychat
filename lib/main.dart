@@ -15,7 +15,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_html/universal_html.dart' as web;
 
 import 'config/setting_keys.dart';
-import 'utils/background_push.dart';
 import 'utils/httpdns/httpdns_manager.dart';
 import 'widgets/fluffy_chat_app.dart';
 
@@ -59,28 +58,6 @@ void main() async {
   Logs().nativeColors = !PlatformInfos.isIOS;
   final clients = await ClientManager.getClients(store: store);
 
-  // If the app starts in detached mode, we assume that it is in
-  // background fetch mode for processing push notifications. This is
-  // currently only supported on Android.
-  if (PlatformInfos.isAndroid &&
-      AppLifecycleState.detached == WidgetsBinding.instance.lifecycleState) {
-    // Do not send online presences when app is in background fetch mode.
-    for (final client in clients) {
-      client.backgroundSync = false;
-      client.syncPresence = PresenceType.offline;
-    }
-
-    // In the background fetch mode we do not want to waste ressources with
-    // starting the Flutter engine but process incoming push notifications.
-    BackgroundPush.clientOnly(clients.first);
-    // To start the flutter engine afterwards we add an custom observer.
-    WidgetsBinding.instance.addObserver(AppStarter(clients, store));
-    Logs().i(
-      '${AppSettings.applicationName.value} started in background-fetch mode. No GUI will be created unless the app is no longer detached.',
-    );
-    return;
-  }
-
   // Started in foreground mode.
   Logs().i(
     '${AppSettings.applicationName.value} started in foreground mode. Rendering GUI...',
@@ -108,32 +85,4 @@ Future<void> startGui(List<Client> clients, SharedPreferences store) async {
   await firstClient?.accountDataLoading;
 
   runApp(FluffyChatApp(clients: clients, pincode: pin, store: store));
-}
-
-/// Watches the lifecycle changes to start the application when it
-/// is no longer detached.
-class AppStarter with WidgetsBindingObserver {
-  final List<Client> clients;
-  final SharedPreferences store;
-  bool guiStarted = false;
-
-  AppStarter(this.clients, this.store);
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (guiStarted) return;
-    if (state == AppLifecycleState.detached) return;
-
-    Logs().i(
-      '${AppSettings.applicationName.value} switches from the detached background-fetch mode to ${state.name} mode. Rendering GUI...',
-    );
-    // Switching to foreground mode needs to reenable send online sync presence.
-    for (final client in clients) {
-      client.backgroundSync = true;
-      client.syncPresence = PresenceType.online;
-    }
-    startGui(clients, store);
-    // We must make sure that the GUI is only started once.
-    guiStarted = true;
-  }
 }
