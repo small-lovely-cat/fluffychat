@@ -27,6 +27,48 @@ fun readBuildSecret(name: String, localProperties: Properties): String =
         ?.takeIf { it.isNotEmpty() }
         ?: localProperties.getProperty(name)?.trim().orEmpty()
 
+/**
+ * 清理 Flutter 生成的插件注册文件中无法编译的无效插件注册代码。
+ *
+ * @param projectDir 当前 Android app 模块目录
+ * @return 无返回值
+ */
+fun sanitizeGeneratedPluginRegistrant(projectDir: File) {
+    val registrantFile =
+        projectDir.resolve("src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java")
+    if (!registrantFile.exists()) {
+        return
+    }
+
+    val invalidPluginBlocks =
+        listOf(
+            """
+    try {
+      flutterEngine.getPlugins().add(new net.jonhanson.flutter_native_splash.FlutterNativeSplashPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin flutter_native_splash, net.jonhanson.flutter_native_splash.FlutterNativeSplashPlugin", e);
+    }
+""".trimIndent(),
+            """
+    try {
+      flutterEngine.getPlugins().add(new dev.flutter.plugins.integration_test.IntegrationTestPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin integration_test, dev.flutter.plugins.integration_test.IntegrationTestPlugin", e);
+    }
+""".trimIndent(),
+        )
+
+    val originalContent = registrantFile.readText()
+    val sanitizedContent =
+        invalidPluginBlocks.fold(originalContent) { currentContent, invalidBlock ->
+            currentContent.replace("$invalidBlock\n", "")
+        }
+
+    if (originalContent != sanitizedContent) {
+        registrantFile.writeText(sanitizedContent)
+    }
+}
+
 val localBuildProperties = Properties().apply {
     val localPropertiesFile = rootProject.file("local.properties")
     if (localPropertiesFile.exists()) {
@@ -49,6 +91,16 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.5")
     implementation("com.github.Tencent.soter:soter-wrapper:2.0.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+}
+
+tasks.register("sanitizeGeneratedPluginRegistrant") {
+    doLast {
+        sanitizeGeneratedPluginRegistrant(projectDir)
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn("sanitizeGeneratedPluginRegistrant")
 }
 
 
