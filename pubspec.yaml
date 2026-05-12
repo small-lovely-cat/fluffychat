@@ -122,3 +122,5 @@ dependency_overrides:
     git:
       url: https://github.com/google/webcrypto.dart.git
       ref: master
+  shared_preferences_android:
+    path: third_party/shared_preferences_android_mmkv

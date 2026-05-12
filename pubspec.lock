@@ -1517,12 +1517,11 @@ packages:
     source: hosted
     version: "2.5.5"
   shared_preferences_android:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: shared_preferences_android
-      sha256: cbc40be9be1c5af4dab4d6e0de4d5d3729e6f3d65b89d21e1815d57705644a6f
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/shared_preferences_android_mmkv"
+      relative: true
+    source: path
     version: "2.4.20"
   shared_preferences_foundation:
     dependency: transitive

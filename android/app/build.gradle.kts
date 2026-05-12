@@ -90,6 +90,7 @@ dependencies {
     implementation("com.alibaba.pdns:alidns-android-sdk:2.3.0")
     implementation("com.google.code.gson:gson:2.8.5")
     implementation("com.github.Tencent.soter:soter-wrapper:2.0.7")
+    implementation("com.tencent:mmkv:2.4.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }
 
@@ -191,7 +192,7 @@ android {
             aliyunHttpDnsCredentialsConfigured.toString(),
         )
         ndk { // Workaround for https://github.com/flutter/flutter/issues/162153#issuecomment-2612443642
-            val defaultAbiFilters = listOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86")
+            val defaultAbiFilters = listOf("arm64-v8a", "x86_64")
             abiFilters += configuredAbiFilters ?: defaultAbiFilters
         }
     }
