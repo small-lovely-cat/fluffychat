@@ -1,5 +1,7 @@
 ![Screenshot](https://github.com/krille-chan/fluffychat/blob/main/assets/banner_transparent.png?raw=true)
 
+> 这是一个FluffyChat的修改版本，引入了Noto Color Emoji字体用于解决低版本设备无法渲染最新emoji表情问题，引入Tencent Soter、androidx.biometric（android平台）实现了带有生物识别解锁的应用锁，引入了AliPDns（android平台）用于改善网络访问质量。
+
 [FluffyChat](https://fluffy.chat) is an open source, nonprofit and cute [[matrix](https://matrix.org)] client written in [Flutter](https://flutter.dev). The goal of the app is to create an easy to use instant messenger which is open source and accessible for everyone.
 
 ### Links:
