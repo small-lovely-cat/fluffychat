@@ -192,7 +192,8 @@ android {
             aliyunHttpDnsCredentialsConfigured.toString(),
         )
         ndk { // Workaround for https://github.com/flutter/flutter/issues/162153#issuecomment-2612443642
-            val defaultAbiFilters = listOf("arm64-v8a", "x86_64")
+            // WCDB Android 迁移当前仅保留 arm64-v8a，按需求不再兼容其他 ABI。
+            val defaultAbiFilters = listOf("arm64-v8a")
             abiFilters += configuredAbiFilters ?: defaultAbiFilters
         }
     }
