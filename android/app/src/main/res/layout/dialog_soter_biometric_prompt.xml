@@ -69,7 +69,6 @@
         android:layout_height="88dp"
         android:layout_marginTop="34dp"
         android:contentDescription="@null"
-        android:src="@drawable/fingerprint_dialog_fp_icon"
         android:tint="@color/soter_prompt_fingerprint_tint" />
 
     <TextView
@@ -77,7 +76,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="36dp"
-        android:background="@drawable/bg_soter_prompt_button"
+        android:background="@color/soter_prompt_action_text"
         android:fontFamily="sans-serif-medium"
         android:gravity="center"
         android:minHeight="54dp"
@@ -85,7 +84,7 @@
         android:paddingTop="14dp"
         android:paddingEnd="16dp"
         android:paddingBottom="14dp"
-        android:textColor="@color/soter_prompt_action_text"
+        android:textColor="@color/common_google_signin_btn_text_light"
         android:textSize="18sp" />
 
 </LinearLayout>
