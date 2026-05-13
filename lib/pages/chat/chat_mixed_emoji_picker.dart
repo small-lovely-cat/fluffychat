@@ -1,12 +1,18 @@
 import 'package:fluffychat/config/app_config.dart';
+import 'package:fluffychat/config/emoji_font.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/utils/emoji/emoji_glyph.dart';
 import 'package:fluffychat/utils/emoji/emoji_kitchen_service.dart';
+import 'package:fluffychat/widgets/matrix.dart';
 import 'package:flutter/material.dart';
 
 import 'chat.dart';
 
 enum _EmojiKitchenSelectionSide { left, right }
+
+const String _emojiKitchenHelpDismissedKey =
+    'emoji_kitchen_help_dismissed_v1';
 
 class ChatMixedEmojiPicker extends StatefulWidget {
   final ChatController controller;
@@ -26,11 +32,27 @@ class _ChatMixedEmojiPickerState extends State<ChatMixedEmojiPicker> {
   String? _selectedLeftEmojiCodepoint;
   String? _selectedRightEmojiCodepoint;
   bool _isSending = false;
+  bool _showHelpTip = false;
+  bool _hasLoadedHelpTipState = false;
 
   @override
   void initState() {
     super.initState();
     _metadataFuture = EmojiKitchenService.loadMetadata();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_hasLoadedHelpTipState) {
+      return;
+    }
+    _hasLoadedHelpTipState = true;
+    final dismissed = Matrix.of(context).store.getBool(
+          _emojiKitchenHelpDismissedKey,
+        ) ??
+        false;
+    _showHelpTip = !dismissed;
   }
 
   /// 更新当前激活的选择侧。
@@ -149,8 +171,25 @@ class _ChatMixedEmojiPickerState extends State<ChatMixedEmojiPicker> {
     }
   }
 
+  /// 关闭首次进入帮助提示。
+  ///
+  /// - Returns: 无返回值。
+  Future<void> _dismissHelpTip() async {
+    if (!_showHelpTip) {
+      return;
+    }
+    await Matrix.of(
+      context,
+    ).store.setBool(_emojiKitchenHelpDismissedKey, true);
+    if (!mounted) {
+      return;
+    }
+    setState(() => _showHelpTip = false);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return FutureBuilder<EmojiKitchenMetadata>(
       future: _metadataFuture,
       builder: (context, snapshot) {
@@ -179,134 +218,168 @@ class _ChatMixedEmojiPickerState extends State<ChatMixedEmojiPicker> {
                 selectedRightEmojiCodepoint,
               )
             : null;
+        final showPreviewCard = selectedCombination != null || _showHelpTip;
 
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-              child: Column(
-                children: [
-                  Row(
+        return ColoredBox(
+          color: theme.colorScheme.surface,
+          child: Column(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.shadowColor.withAlpha(20),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: _EmojiKitchenSelectorButton(
-                          title: 'Emoji A',
-                          value: selectedLeftEmojiCodepoint == null
-                              ? null
-                              : EmojiKitchenService.getCatalogEntry(
-                                  selectedLeftEmojiCodepoint,
-                                  fallbackName:
-                                      metadata
-                                          .data[selectedLeftEmojiCodepoint]
-                                          ?.alt,
-                                ),
-                          isActive:
-                              _activeSelectionSide ==
-                              _EmojiKitchenSelectionSide.left,
-                          onTap: () => _setActiveSelectionSide(
-                            _EmojiKitchenSelectionSide.left,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _EmojiKitchenSelectorButton(
+                              title: 'Emoji A',
+                              value: selectedLeftEmojiCodepoint == null
+                                  ? null
+                                  : EmojiKitchenService.getCatalogEntry(
+                                      selectedLeftEmojiCodepoint,
+                                      fallbackName:
+                                          metadata
+                                              .data[selectedLeftEmojiCodepoint]
+                                              ?.alt,
+                                    ),
+                              isActive:
+                                  _activeSelectionSide ==
+                                  _EmojiKitchenSelectionSide.left,
+                              onTap: () => _setActiveSelectionSide(
+                                _EmojiKitchenSelectionSide.left,
+                              ),
+                            ),
                           ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _EmojiKitchenSelectorButton(
+                              title: 'Emoji B',
+                              value: selectedRightEmojiCodepoint == null
+                                  ? null
+                                  : EmojiKitchenService.getCatalogEntry(
+                                      selectedRightEmojiCodepoint,
+                                      fallbackName:
+                                          metadata
+                                              .data[selectedRightEmojiCodepoint]
+                                              ?.alt,
+                                    ),
+                              isActive:
+                                  _activeSelectionSide ==
+                                  _EmojiKitchenSelectionSide.right,
+                              onTap: () => _setActiveSelectionSide(
+                                _EmojiKitchenSelectionSide.right,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        onChanged: (value) =>
+                            setState(() => _searchQuery = value),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          prefixIcon: const Icon(Icons.search),
+                          hintText:
+                              _activeSelectionSide ==
+                                  _EmojiKitchenSelectionSide.left
+                              ? 'Search base emoji'
+                              : 'Search mix target',
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _EmojiKitchenSelectorButton(
-                          title: 'Emoji B',
-                          value: selectedRightEmojiCodepoint == null
+                      if (showPreviewCard) ...[
+                        const SizedBox(height: 8),
+                        _EmojiKitchenPreviewCard(
+                          combination: selectedCombination,
+                          onSend: selectedCombination == null || _isSending
                               ? null
-                              : EmojiKitchenService.getCatalogEntry(
-                                  selectedRightEmojiCodepoint,
-                                  fallbackName:
-                                      metadata
-                                          .data[selectedRightEmojiCodepoint]
-                                          ?.alt,
-                                ),
-                          isActive:
-                              _activeSelectionSide ==
-                              _EmojiKitchenSelectionSide.right,
-                          onTap: () => _setActiveSelectionSide(
-                            _EmojiKitchenSelectionSide.right,
-                          ),
+                              : () => _sendCombination(selectedCombination),
+                          onDismissHelp: _showHelpTip ? _dismissHelpTip : null,
+                          isSending: _isSending,
                         ),
-                      ),
+                      ],
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    onChanged: (value) => setState(() => _searchQuery = value),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      prefixIcon: const Icon(Icons.search),
-                      hintText:
-                          _activeSelectionSide ==
-                              _EmojiKitchenSelectionSide.left
-                          ? 'Search base emoji'
-                          : 'Search mix target',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _EmojiKitchenPreviewCard(
-                    combination: selectedCombination,
-                    onSend: selectedCombination == null || _isSending
-                        ? null
-                        : () => _sendCombination(selectedCombination),
-                    isSending: _isSending,
-                  ),
-                ],
+                ),
               ),
-            ),
-            Expanded(
-              child: visibleEntries.isEmpty
-                  ? _EmojiKitchenInfoView(
-                      icon: Icons.emoji_emotions_outlined,
-                      message:
-                          _activeSelectionSide ==
-                                  _EmojiKitchenSelectionSide.right &&
-                              selectedLeftEmojiCodepoint == null
-                          ? 'Select the first emoji to view valid mixes.'
-                          : 'No matching emoji found.',
-                    )
-                  : LayoutBuilder(
-                      builder: (context, constraints) {
-                        final width = constraints.maxWidth;
-                        final crossAxisCount = width >= 560
-                            ? 6
-                            : width >= 420
-                            ? 5
-                            : 4;
-                        return GridView.builder(
-                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                mainAxisSpacing: 8,
-                                crossAxisSpacing: 8,
-                                childAspectRatio: 1.1,
-                              ),
-                          itemCount: visibleEntries.length,
-                          itemBuilder: (context, index) {
-                            final entry = visibleEntries[index];
-                            final isSelected =
-                                (_activeSelectionSide ==
-                                            _EmojiKitchenSelectionSide.left &&
-                                        _selectedLeftEmojiCodepoint ==
-                                            entry.emojiCodepoint) ||
-                                    (_activeSelectionSide ==
-                                            _EmojiKitchenSelectionSide.right &&
-                                        _selectedRightEmojiCodepoint ==
-                                            entry.emojiCodepoint);
-                            return _EmojiKitchenEmojiTile(
-                              entry: entry,
-                              isSelected: isSelected,
-                              onTap: () =>
-                                  _handleEmojiSelected(metadata, entry),
-                            );
-                          },
-                        );
-                      },
-                    ),
-            ),
-          ],
+              Expanded(
+                child: ClipRect(
+                  child: ColoredBox(
+                    color: theme.colorScheme.surface,
+                    child: visibleEntries.isEmpty
+                        ? _EmojiKitchenInfoView(
+                            icon: Icons.emoji_emotions_outlined,
+                            message:
+                                _activeSelectionSide ==
+                                        _EmojiKitchenSelectionSide.right &&
+                                    selectedLeftEmojiCodepoint == null
+                                ? 'Select the first emoji to view valid mixes.'
+                                : 'No matching emoji found.',
+                          )
+                        : LayoutBuilder(
+                            builder: (context, constraints) {
+                              final width = constraints.maxWidth;
+                              final crossAxisCount = width >= 560
+                                  ? 8
+                                  : width >= 420
+                                  ? 7
+                                  : 6;
+                              return GridView.builder(
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  8,
+                                  12,
+                                  12,
+                                ),
+                                clipBehavior: Clip.hardEdge,
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: crossAxisCount,
+                                      mainAxisSpacing: 8,
+                                      crossAxisSpacing: 8,
+                                      mainAxisExtent: 52,
+                                    ),
+                                itemCount: visibleEntries.length,
+                                itemBuilder: (context, index) {
+                                  final entry = visibleEntries[index];
+                                  final isSelected =
+                                      (_activeSelectionSide ==
+                                                  _EmojiKitchenSelectionSide
+                                                      .left &&
+                                              _selectedLeftEmojiCodepoint ==
+                                                  entry.emojiCodepoint) ||
+                                          (_activeSelectionSide ==
+                                                  _EmojiKitchenSelectionSide
+                                                      .right &&
+                                              _selectedRightEmojiCodepoint ==
+                                                  entry.emojiCodepoint);
+                                  return _EmojiKitchenEmojiTile(
+                                    key: ValueKey(entry.emojiCodepoint),
+                                    entry: entry,
+                                    isSelected: isSelected,
+                                    onTap: () =>
+                                        _handleEmojiSelected(metadata, entry),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -347,22 +420,19 @@ class _EmojiKitchenSelectorButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Text(value?.emoji ?? '◻️', style: const TextStyle(fontSize: 28)),
-            const SizedBox(width: 8),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(title, style: theme.textTheme.labelMedium),
-                  Text(
-                    value?.name ?? 'Tap to choose',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ],
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelLarge,
               ),
+            ),
+            const SizedBox(width: 8),
+            EmojiGlyph(
+              value?.emoji ?? '◻️',
+              dimension: 26,
+              style: kEmojiTextStyle.merge(const TextStyle(fontSize: 26)),
             ),
           ],
         ),
@@ -374,11 +444,13 @@ class _EmojiKitchenSelectorButton extends StatelessWidget {
 class _EmojiKitchenPreviewCard extends StatelessWidget {
   final EmojiKitchenCombination? combination;
   final VoidCallback? onSend;
+  final VoidCallback? onDismissHelp;
   final bool isSending;
 
   const _EmojiKitchenPreviewCard({
     required this.combination,
     required this.onSend,
+    required this.onDismissHelp,
     required this.isSending,
   });
 
@@ -396,8 +468,12 @@ class _EmojiKitchenPreviewCard extends StatelessWidget {
       ),
       child: combination == null
           ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.auto_awesome_outlined),
+                const Padding(
+                  padding: EdgeInsets.only(top: 2),
+                  child: Icon(Icons.auto_awesome_outlined),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -405,6 +481,15 @@ class _EmojiKitchenPreviewCard extends StatelessWidget {
                     style: theme.textTheme.bodyMedium,
                   ),
                 ),
+                if (onDismissHelp != null) ...[
+                  const SizedBox(width: 4),
+                  IconButton(
+                    onPressed: onDismissHelp,
+                    tooltip: L10n.of(context).close,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
               ],
             )
           : Row(
@@ -461,6 +546,7 @@ class _EmojiKitchenEmojiTile extends StatelessWidget {
   final VoidCallback onTap;
 
   const _EmojiKitchenEmojiTile({
+    required super.key,
     required this.entry,
     required this.isSelected,
     required this.onTap,
@@ -469,37 +555,31 @@ class _EmojiKitchenEmojiTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Tooltip(
-      message: entry.name,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppConfig.borderRadius),
-        child: Ink(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppConfig.borderRadius),
-            border: Border.all(
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.outlineVariant,
-            ),
-            color: isSelected
-                ? theme.colorScheme.primaryContainer
-                : theme.colorScheme.surface,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(entry.emoji, style: const TextStyle(fontSize: 28)),
-              const SizedBox(height: 6),
-              Text(
-                entry.name,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall,
+    return RepaintBoundary(
+      child: Tooltip(
+        message: entry.name,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppConfig.borderRadius),
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppConfig.borderRadius),
+              border: Border.all(
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outlineVariant,
               ),
-            ],
+              color: isSelected
+                  ? theme.colorScheme.primaryContainer
+                  : theme.colorScheme.surface,
+            ),
+            child: Center(
+              child: EmojiGlyph(
+                entry.emoji,
+                dimension: 28,
+                style: kEmojiTextStyle.merge(const TextStyle(fontSize: 28)),
+              ),
+            ),
           ),
         ),
       ),
