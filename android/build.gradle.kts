@@ -2,6 +2,7 @@ allprojects {
     repositories {
         google()
         maven(url = "https://maven.aliyun.com/repository/public/")
+        maven(url = "https://artifact.bytedance.com/repository/Volcengine/")
         mavenCentral()
         maven(url = "https://jitpack.io")
     }

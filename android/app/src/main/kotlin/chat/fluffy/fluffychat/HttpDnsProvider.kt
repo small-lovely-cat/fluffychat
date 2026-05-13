@@ -5,7 +5,8 @@ package chat.fluffy.fluffychat
  */
 enum class HttpDnsProvider(val storageValue: String) {
     NONE("none"),
-    ALIYUN("aliyun");
+    ALIYUN("aliyun"),
+    VOLCENGINE("volcengine");
 
     companion object {
         /**

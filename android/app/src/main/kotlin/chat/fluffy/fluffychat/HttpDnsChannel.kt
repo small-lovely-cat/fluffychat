@@ -53,7 +53,7 @@ class HttpDnsChannel private constructor(
     }
 
     /**
-     * Resolves the given host through the native Aliyun SDK on an IO thread.
+     * Resolves the given host through the active native HTTPDNS SDK on an IO thread.
      *
      * @param call Incoming method call carrying the host name to resolve.
      * @param result Method channel result callback.

@@ -66,7 +66,7 @@ Future<HttpDnsDomainListsDialogResult?> showHttpDnsDomainListsDialog({
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Aliyun keeps at most ${HttpDnsDomainHelper.maxKeepAliveDomains} keep-alive domains. Homeserver domains are prioritized first.',
+                  'Some native SDKs cap keep-alive domains at ${HttpDnsDomainHelper.maxKeepAliveDomains} entries. Homeserver domains are prioritized first.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),

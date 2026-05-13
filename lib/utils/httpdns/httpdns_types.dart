@@ -1,7 +1,8 @@
 /// Supported HTTPDNS provider options.
 enum HttpDnsProvider {
   none('none', 'Disabled'),
-  aliyun('aliyun', 'Aliyun HTTPDNS');
+  aliyun('aliyun', 'Aliyun HTTPDNS'),
+  volcengine('volcengine', 'Volcengine HTTPDNS');
 
   final String storageValue;
   final String displayName;

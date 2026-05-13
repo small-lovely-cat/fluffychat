@@ -64,6 +64,11 @@ jobs:
       ALIYUN_HTTPDNS_ACCOUNT_ID: ${{ secrets.ALIYUN_HTTPDNS_ACCOUNT_ID }}
       ALIYUN_HTTPDNS_ACCESS_KEY_ID: ${{ secrets.ALIYUN_HTTPDNS_ACCESS_KEY_ID }}
       ALIYUN_HTTPDNS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_HTTPDNS_ACCESS_KEY_SECRET }}
+      VE_HTTPDNS_ACCOUNT_ID: ${{ secrets.VE_HTTPDNS_ACCOUNT_ID }}
+      VE_HTTPDNS_SECRET_KEY: ${{ secrets.VE_HTTPDNS_SECRET_KEY }}
+      VE_HTTPDNS_APP_ID: ${{ secrets.VE_HTTPDNS_APP_ID }}
+      VE_HTTPDNS_DOH_DOMAINS: ${{ secrets.VE_HTTPDNS_DOH_DOMAINS }}
+      VE_HTTPDNS_USE_DOH: ${{ secrets.VE_HTTPDNS_USE_DOH }}
     environment:
       name: android-build
       deployment: false

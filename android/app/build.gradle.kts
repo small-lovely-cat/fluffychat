@@ -88,6 +88,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.17.0") // For Android Auto
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("com.alibaba.pdns:alidns-android-sdk:2.3.0")
+    implementation("com.bytedance.frameworks.baselib:httpdns:1.0.23")
     implementation("com.google.code.gson:gson:2.8.5")
     implementation("com.github.Tencent.soter:soter-wrapper:2.0.7")
     implementation("com.tencent:mmkv:2.4.0")
@@ -164,6 +165,20 @@ android {
         aliyunHttpDnsAccountId.isNotBlank() &&
             aliyunHttpDnsAccessKeyId.isNotBlank() &&
             aliyunHttpDnsAccessKeySecret.isNotBlank()
+    val veHttpDnsAccountId =
+        readBuildSecret("VE_HTTPDNS_ACCOUNT_ID", localBuildProperties)
+    val veHttpDnsSecretKey =
+        readBuildSecret("VE_HTTPDNS_SECRET_KEY", localBuildProperties)
+    val veHttpDnsAppId =
+        readBuildSecret("VE_HTTPDNS_APP_ID", localBuildProperties)
+    val veHttpDnsDohDomains =
+        readBuildSecret("VE_HTTPDNS_DOH_DOMAINS", localBuildProperties)
+    val veHttpDnsUseDoh =
+        readBuildSecret("VE_HTTPDNS_USE_DOH", localBuildProperties)
+            .equals("true", ignoreCase = true)
+    val veHttpDnsCredentialsConfigured =
+        veHttpDnsAccountId.isNotBlank() &&
+            veHttpDnsSecretKey.isNotBlank()
 
     defaultConfig {
         applicationId = "chat.fluffy.fluffychat"
@@ -190,6 +205,36 @@ android {
             "boolean",
             "ALIYUN_HTTPDNS_CREDENTIALS_CONFIGURED",
             aliyunHttpDnsCredentialsConfigured.toString(),
+        )
+        buildConfigField(
+            "String",
+            "VE_HTTPDNS_ACCOUNT_ID",
+            asBuildConfigString(veHttpDnsAccountId),
+        )
+        buildConfigField(
+            "String",
+            "VE_HTTPDNS_SECRET_KEY",
+            asBuildConfigString(veHttpDnsSecretKey),
+        )
+        buildConfigField(
+            "String",
+            "VE_HTTPDNS_APP_ID",
+            asBuildConfigString(veHttpDnsAppId),
+        )
+        buildConfigField(
+            "String",
+            "VE_HTTPDNS_DOH_DOMAINS",
+            asBuildConfigString(veHttpDnsDohDomains),
+        )
+        buildConfigField(
+            "boolean",
+            "VE_HTTPDNS_USE_DOH",
+            veHttpDnsUseDoh.toString(),
+        )
+        buildConfigField(
+            "boolean",
+            "VE_HTTPDNS_CREDENTIALS_CONFIGURED",
+            veHttpDnsCredentialsConfigured.toString(),
         )
         ndk { // Workaround for https://github.com/flutter/flutter/issues/162153#issuecomment-2612443642
             // WCDB Android 迁移当前仅保留 arm64-v8a，按需求不再兼容其他 ABI。
