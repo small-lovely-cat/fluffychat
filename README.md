@@ -61,9 +61,29 @@ cd fluffychat
 
 4. Debug with: `flutter run`
 
+### Sentry build env
+
+Sentry 相关配置
+
+必需环境变量：
+
+- `SENTRY_DSN`：运行时上报 DSN，会在构建时作为 `--dart-define` 注入 Flutter。
+- `SENTRY_ORG`：Sentry 组织 slug，供 `sentry_dart_plugin` 上传符号表和 source maps。
+- `SENTRY_PROJECT`：Sentry 项目 slug，供 `sentry_dart_plugin` 上传符号表和 source maps。
+- `SENTRY_AUTH_TOKEN`：Sentry CLI / `sentry_dart_plugin` 使用的鉴权 token。
+
+当前项目使用的 Sentry 配置值：
+
+- `SENTRY_DSN=https://b9f2f6df42ca23dd5bc8e60d4d0f30f8@o4511381028929536.ingest.us.sentry.io/4511381082210304`
+- `SENTRY_ORG=zakonetwork`
+- `SENTRY_PROJECT=fluffychat`
+- `SENTRY_AUTH_TOKEN`：仓库中未保存，请在本地环境变量或 CI secrets 中填写你们现有的有效 token。
+
+如果不提供 `SENTRY_DSN`，应用仍可构建，但该构建产物会禁用 Sentry 运行时上报。
+
 ### Android
 
-* Build with: `flutter build apk`
+* Build with: `./scripts/build-android.sh apk --release`
 
 ### iOS / iPadOS
 
@@ -104,7 +124,7 @@ bash ./scripts/build-ios-tipa.sh
 * Build with:
 ```bash
 ./scripts/prepare-web.sh # To install Vodozemac
-flutter build web --release
+./scripts/build-web-ci.sh
 ```
 
 * Optionally configure by serving a `config.json` at the same path as fluffychat.
@@ -138,9 +158,9 @@ sudo apt install libjsoncpp1 libsecret-1-dev libsecret-1-0 librhash0 libwebkit2g
 
 * Build with one of these:
 ```bash
-flutter build linux --release
-flutter build windows --release
-flutter build macos --release
+./scripts/build-linux.sh
+./scripts/build-windows.ps1
+./scripts/build-macos.sh
 ```
 
 ## How to run integration tests

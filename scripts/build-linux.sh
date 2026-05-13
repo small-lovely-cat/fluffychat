@@ -7,10 +7,8 @@ cd "${REPO_ROOT}"
 
 source "${SCRIPT_DIR}/lib/flutter_build_env.sh"
 
-if [[ "${FLUFFYCHAT_SKIP_PUB_GET:-false}" != "true" ]]; then
-  flutter pub get
-fi
+flutter pub get
 dart run scripts/prepare_emoji_kitchen_metadata.dart
 
 collect_fluffychat_flutter_build_args
-flutter build "${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}" "$@"
+flutter build linux --release "${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}"

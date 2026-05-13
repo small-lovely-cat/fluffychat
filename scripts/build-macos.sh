@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+source "${SCRIPT_DIR}/lib/flutter_build_env.sh"
+
 FLUFFYCHAT_ORIG_GROUP="im.fluffychat"
 FLUFFYCHAT_ORIG_TEAM="4NXF6Z997G"
+FLUFFYCHAT_NEW_GROUP="${FLUFFYCHAT_NEW_GROUP:-}"
+FLUFFYCHAT_NEW_TEAM="${FLUFFYCHAT_NEW_TEAM:-}"
+I_PROMISE_IM_REALLY_SMART="${I_PROMISE_IM_REALLY_SMART:-}"
+FLUFFYCHAT_INSTALL_IPA="${FLUFFYCHAT_INSTALL_IPA:-}"
 #FLUFFYCHAT_NEW_GROUP="com.example.fluffychat"
 #FLUFFYCHAT_NEW_TEAM="ABCDE12345"
 
@@ -28,6 +40,7 @@ FLUFFYCHAT_ORIG_TEAM="4NXF6Z997G"
 
 ### Make release build ###
 dart run scripts/prepare_emoji_kitchen_metadata.dart
-flutter build macos --release
+collect_fluffychat_flutter_build_args
+flutter build macos --release "${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}"
 
 echo "Build build/macos/Build/Products/Release/FluffyChat.app"

@@ -29,6 +29,10 @@ jobs:
       name: web-build
       deployment: false
     env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
       WEB_BUILD_BASE_HREF: ${{ secrets.WEB_BUILD_BASE_HREF }}
       WEB_BUILD_CANVASKIT_URL: ${{ secrets.WEB_BUILD_CANVASKIT_URL }}
       WEB_BUILD_CONFIG_JSON: ${{ secrets.WEB_BUILD_CONFIG_JSON }}

@@ -10,11 +10,13 @@ COPY . /app
 WORKDIR /app
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
+ARG SENTRY_DSN=""
+ENV SENTRY_DSN="${SENTRY_DSN}"
+ENV WEB_BUILD_CANVASKIT_URL="canvaskit/"
 RUN rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
 RUN ./scripts/prepare-web.sh
 COPY config.* /app/
-RUN flutter pub get
-RUN flutter build web --dart-define=FLUTTER_WEB_CANVASKIT_URL=canvaskit/ --release --source-maps
+RUN ./scripts/build-web-ci.sh
 
 FROM docker.io/nginx:alpine
 RUN rm -rf /usr/share/nginx/html

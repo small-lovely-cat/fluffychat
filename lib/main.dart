@@ -11,18 +11,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_html/universal_html.dart' as web;
 
 import 'config/setting_keys.dart';
 import 'utils/httpdns/httpdns_manager.dart';
 import 'widgets/fluffy_chat_app.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 
 ReceivePort? mainIsolateReceivePort;
 
 bool _vodozemacInitialized = false;
+const String _sentryDsn = String.fromEnvironment('SENTRY_DSN');
 
+/// 应用启动入口。
+///
+/// 负责初始化 Flutter 运行环境、应用配置、本地存储、加密组件和客户端，
+/// 并在准备完成后启动图形界面。
 void main() async {
   if (PlatformInfos.isAndroid) {
     final port = mainIsolateReceivePort = ReceivePort();
@@ -66,7 +71,16 @@ void main() async {
   await startGui(clients, store);
 }
 
-/// Fetch the pincode for the applock and start the flutter engine.
+/// 获取应用锁 PIN 并启动主界面。
+///
+/// 适用于应用基础初始化完成后，进入前台渲染 Flutter UI 的场景。
+///
+/// 参数说明：
+/// - [clients]：当前已恢复完成的 Matrix 客户端列表，用于渲染聊天应用。
+/// - [store]：应用共享配置存储，用于读取 PIN 和传递运行时配置。
+///
+/// 返回值说明：
+/// - [Future<void>]：异步执行完成后表示主界面已交由 Flutter 启动流程处理。
 Future<void> startGui(List<Client> clients, SharedPreferences store) async {
   // Fetch the pin for the applock if existing for mobile applications.
   String? pin;
@@ -85,9 +99,18 @@ Future<void> startGui(List<Client> clients, SharedPreferences store) async {
   await firstClient?.roomsLoading;
   await firstClient?.accountDataLoading;
 
+  final app = FluffyChatApp(clients: clients, pincode: pin, store: store);
+  if (_sentryDsn.isEmpty) {
+    Logs().w(
+      'Sentry DSN is empty for this build. Crash reporting is disabled.',
+    );
+    runApp(app);
+    return;
+  }
+
   await SentryFlutter.init(
     (options) {
-      options.dsn = 'https://b9f2f6df42ca23dd5bc8e60d4d0f30f8@o4511381028929536.ingest.us.sentry.io/4511381082210304';
+      options.dsn = _sentryDsn;
       // Adds request headers and IP for users, for more info visit:
       // https://docs.sentry.io/platforms/dart/guides/flutter/data-management/data-collected/
       options.sendDefaultPii = true;
@@ -102,7 +125,11 @@ Future<void> startGui(List<Client> clients, SharedPreferences store) async {
       options.replay.sessionSampleRate = 0.1;
       options.replay.onErrorSampleRate = 1.0;
     },
-    appRunner: () => runApp(SentryWidget(child: FluffyChatApp(clients: clients, pincode: pin, store: store))),
+    appRunner: () => runApp(
+      SentryWidget(
+        child: app,
+      ),
+    ),
   );
   // await Sentry.captureException(StateError('This is a sample exception.'));
 }

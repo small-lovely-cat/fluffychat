@@ -8,7 +8,11 @@ rm -f Podfile.lock
 pod install
 pod update
 cd ..
-flutter build ios --release
+if [ -n "${SENTRY_DSN:-}" ]; then
+  flutter build ios --release --dart-define "SENTRY_DSN=${SENTRY_DSN}"
+else
+  flutter build ios --release
+fi
 cd ios
 bundle update fastlane
 bundle exec fastlane beta

@@ -133,7 +133,7 @@ dependency_overrides:
     path: third_party/shared_preferences_android_mmkv
 
 sentry:
+  # SENTRY_ORG / SENTRY_PROJECT / SENTRY_AUTH_TOKEN 从构建环境读取，
+  # 避免把 Sentry 发布配置硬编码在仓库中。
   upload_debug_symbols: true
   upload_source_maps: true
-  project: fluffychat
-  org: zakonetwork

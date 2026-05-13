@@ -5,6 +5,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
+source "${ROOT_DIR}/scripts/lib/flutter_build_env.sh"
+
 if [[ -n "${WEB_BUILD_CONFIG_JSON:-}" ]]; then
   printf '%s' "${WEB_BUILD_CONFIG_JSON}" > config.json
   if command -v jq >/dev/null 2>&1; then
@@ -36,6 +38,9 @@ if [[ -n "${WEB_BUILD_DART_DEFINES:-}" ]]; then
     build_args+=(--dart-define "${define}")
   done <<< "${WEB_BUILD_DART_DEFINES}"
 fi
+
+collect_fluffychat_flutter_build_args
+build_args+=("${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}")
 
 if [[ -n "${WEB_BUILD_EXTRA_ARGS:-}" ]]; then
   read -r -a extra_args <<< "${WEB_BUILD_EXTRA_ARGS}"

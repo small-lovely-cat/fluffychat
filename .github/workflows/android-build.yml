@@ -64,6 +64,10 @@ jobs:
       ALIYUN_HTTPDNS_ACCOUNT_ID: ${{ secrets.ALIYUN_HTTPDNS_ACCOUNT_ID }}
       ALIYUN_HTTPDNS_ACCESS_KEY_ID: ${{ secrets.ALIYUN_HTTPDNS_ACCESS_KEY_ID }}
       ALIYUN_HTTPDNS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_HTTPDNS_ACCESS_KEY_SECRET }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
       VE_HTTPDNS_ACCOUNT_ID: ${{ secrets.VE_HTTPDNS_ACCOUNT_ID }}
       VE_HTTPDNS_SECRET_KEY: ${{ secrets.VE_HTTPDNS_SECRET_KEY }}
       VE_HTTPDNS_APP_ID: ${{ secrets.VE_HTTPDNS_APP_ID }}
@@ -204,18 +208,20 @@ jobs:
         if: steps.params.outputs.build_mode == 'debug'
         env:
           FLUFFYCHAT_ABI_FILTERS: arm64-v8a
-        run: flutter build apk --debug --target-platform android-arm64
+          FLUFFYCHAT_SKIP_PUB_GET: "true"
+        run: ./scripts/build-android.sh apk --debug --target-platform android-arm64
 
       - name: Build release artifacts
         if: steps.params.outputs.build_mode == 'release'
         shell: bash
         env:
           FLUFFYCHAT_ABI_FILTERS: arm64-v8a
+          FLUFFYCHAT_SKIP_PUB_GET: "true"
         run: |
           set -euo pipefail
-          flutter build apk --release --target-platform android-arm64
+          ./scripts/build-android.sh apk --release --target-platform android-arm64
           if [[ "${{ steps.signing.outputs.enabled }}" == "true" && "${{ steps.params.outputs.build_aab }}" == "true" ]]; then
-            flutter build appbundle --release --target-platform android-arm64
+            ./scripts/build-android.sh appbundle --release --target-platform android-arm64
           fi
 
       - name: List output files

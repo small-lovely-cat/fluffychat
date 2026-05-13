@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
+source "${SCRIPT_DIR}/lib/flutter_build_env.sh"
+
 FLUFFYCHAT_ORIG_GROUP="${FLUFFYCHAT_ORIG_GROUP:-im.fluffychat}"
 FLUFFYCHAT_NEW_GROUP="${FLUFFYCHAT_NEW_GROUP:-}"
 TIPA_OUTPUT_DIR="${TIPA_OUTPUT_DIR:-build/ios/tipa}"
@@ -37,7 +39,8 @@ fi
 flutter pub get
 bash ./scripts/generate-ios-emoji-assets.sh
 dart run scripts/prepare_emoji_kitchen_metadata.dart
-flutter build ios --release --no-codesign
+collect_fluffychat_flutter_build_args
+flutter build ios --release --no-codesign "${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}"
 
 app_path="${REPO_ROOT}/build/ios/iphoneos/Runner.app"
 if [[ ! -d "${app_path}" ]]; then
