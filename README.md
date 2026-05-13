@@ -83,7 +83,7 @@ Sentry 相关配置
 
 ### Android
 
-* Build with: `./scripts/build-android.sh apk --release`
+* Build with: `bash ./scripts/build-android.sh apk --release`
 
 ### iOS / iPadOS
 
@@ -93,7 +93,7 @@ Sentry 相关配置
     * FLUFFYCHAT_NEW_TEAM: the Apple Developer team that your certificates should live under
     * FLUFFYCHAT_NEW_GROUP: the group you want App IDs and such to live under (ie: com.example.fluffychat)
     * FLUFFYCHAT_INSTALL_IPA: set to `1` if you want the IPA to be deployed to connected devices after building, otherwise unset
-* Run `./scripts/build-ios.sh`
+* Run `bash ./scripts/build-ios.sh`
 
 #### GitHub Actions TrollStore `.tipa`
 
@@ -123,8 +123,8 @@ bash ./scripts/build-ios-tipa.sh
 
 * Build with:
 ```bash
-./scripts/prepare-web.sh # To install Vodozemac
-./scripts/build-web-ci.sh
+bash ./scripts/prepare-web.sh # To install Vodozemac
+bash ./scripts/build-web-ci.sh
 ```
 
 * Optionally configure by serving a `config.json` at the same path as fluffychat.
@@ -158,9 +158,9 @@ sudo apt install libjsoncpp1 libsecret-1-dev libsecret-1-0 librhash0 libwebkit2g
 
 * Build with one of these:
 ```bash
-./scripts/build-linux.sh
+bash ./scripts/build-linux.sh
 ./scripts/build-windows.ps1
-./scripts/build-macos.sh
+bash ./scripts/build-macos.sh
 ```
 
 ## How to run integration tests

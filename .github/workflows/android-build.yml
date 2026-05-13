@@ -209,7 +209,7 @@ jobs:
         env:
           FLUFFYCHAT_ABI_FILTERS: arm64-v8a
           FLUFFYCHAT_SKIP_PUB_GET: "true"
-        run: ./scripts/build-android.sh apk --debug --target-platform android-arm64
+        run: bash ./scripts/build-android.sh apk --debug --target-platform android-arm64
 
       - name: Build release artifacts
         if: steps.params.outputs.build_mode == 'release'
@@ -219,9 +219,9 @@ jobs:
           FLUFFYCHAT_SKIP_PUB_GET: "true"
         run: |
           set -euo pipefail
-          ./scripts/build-android.sh apk --release --target-platform android-arm64
+          bash ./scripts/build-android.sh apk --release --target-platform android-arm64
           if [[ "${{ steps.signing.outputs.enabled }}" == "true" && "${{ steps.params.outputs.build_aab }}" == "true" ]]; then
-            ./scripts/build-android.sh appbundle --release --target-platform android-arm64
+            bash ./scripts/build-android.sh appbundle --release --target-platform android-arm64
           fi
 
       - name: List output files

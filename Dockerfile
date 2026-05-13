@@ -14,9 +14,9 @@ ARG SENTRY_DSN=""
 ENV SENTRY_DSN="${SENTRY_DSN}"
 ENV WEB_BUILD_CANVASKIT_URL="canvaskit/"
 RUN rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-RUN ./scripts/prepare-web.sh
+RUN bash ./scripts/prepare-web.sh
 COPY config.* /app/
-RUN ./scripts/build-web-ci.sh
+RUN bash ./scripts/build-web-ci.sh
 
 FROM docker.io/nginx:alpine
 RUN rm -rf /usr/share/nginx/html

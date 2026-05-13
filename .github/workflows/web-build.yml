@@ -120,7 +120,7 @@ jobs:
 
       - name: Build web bundle
         shell: bash
-        run: ./scripts/build-web-ci.sh
+        run: bash ./scripts/build-web-ci.sh
 
       - name: Package web bundle
         id: package
