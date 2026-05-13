@@ -17,6 +17,7 @@ import 'package:universal_html/universal_html.dart' as web;
 import 'config/setting_keys.dart';
 import 'utils/httpdns/httpdns_manager.dart';
 import 'widgets/fluffy_chat_app.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 ReceivePort? mainIsolateReceivePort;
 
@@ -84,5 +85,24 @@ Future<void> startGui(List<Client> clients, SharedPreferences store) async {
   await firstClient?.roomsLoading;
   await firstClient?.accountDataLoading;
 
-  runApp(FluffyChatApp(clients: clients, pincode: pin, store: store));
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = 'https://b9f2f6df42ca23dd5bc8e60d4d0f30f8@o4511381028929536.ingest.us.sentry.io/4511381082210304';
+      // Adds request headers and IP for users, for more info visit:
+      // https://docs.sentry.io/platforms/dart/guides/flutter/data-management/data-collected/
+      options.sendDefaultPii = true;
+      options.enableLogs = true;
+      // Set tracesSampleRate to 1.0 to capture 100% of transactions for tracing.
+      // We recommend adjusting this value in production.
+      options.tracesSampleRate = 1.0;
+      // The sampling rate for profiling is relative to tracesSampleRate
+      // Setting to 1.0 will profile 100% of sampled transactions:
+      options.profilesSampleRate = 1.0;
+      // Configure Session Replay
+      options.replay.sessionSampleRate = 0.1;
+      options.replay.onErrorSampleRate = 1.0;
+    },
+    appRunner: () => runApp(SentryWidget(child: FluffyChatApp(clients: clients, pincode: pin, store: store))),
+  );
+  // await Sentry.captureException(StateError('This is a sample exception.'));
 }
