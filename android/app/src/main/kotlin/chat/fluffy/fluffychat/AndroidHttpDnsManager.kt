@@ -7,6 +7,8 @@ import com.alibaba.pdns.log.HttpDnsLog
 import com.alibaba.pdns.log.ILogger
 import com.bytedancehttpdns.httpdns.DnsResult
 import com.bytedancehttpdns.httpdns.HttpDns
+import com.tencent.msdk.dns.DnsConfig
+import com.tencent.msdk.dns.MSDKDnsResolver
 import java.util.Locale
 
 class AndroidHttpDnsManager private constructor(
@@ -15,6 +17,7 @@ class AndroidHttpDnsManager private constructor(
     private val stateLock = Any()
     private var aliyunInitialized = false
     private var volcengineInitialized = false
+    private var tencentInitialized = false
     private var selectedProvider = HttpDnsProvider.NONE
     private var effectiveProvider = HttpDnsProvider.NONE
     private var keepAliveDomains = emptyList<String>()
@@ -61,6 +64,7 @@ class AndroidHttpDnsManager private constructor(
             HttpDnsProvider.NONE -> deactivateProviderLocked(previousEffectiveProvider)
             HttpDnsProvider.ALIYUN -> activateAliyunLocked()
             HttpDnsProvider.VOLCENGINE -> activateVolcengineLocked()
+            HttpDnsProvider.TENCENT -> activateTencentLocked()
         }
 
         return statusLocked()
@@ -95,6 +99,18 @@ class AndroidHttpDnsManager private constructor(
                         originalHost = host,
                         provider = HttpDnsProvider.VOLCENGINE,
                         resolver = ::resolveVolcengineIpv4AddressesLocked,
+                    )
+                }
+            }
+
+            HttpDnsProvider.TENCENT -> {
+                if (!ensureTencentInitializedLocked()) {
+                    emptyList()
+                } else {
+                    resolveIpv4AddressesForCandidatesLocked(
+                        originalHost = host,
+                        provider = HttpDnsProvider.TENCENT,
+                        resolver = ::resolveTencentIpv4AddressesLocked,
                     )
                 }
             }
@@ -152,6 +168,29 @@ class AndroidHttpDnsManager private constructor(
     }
 
     /**
+     * Enables Tencent DNSPod HTTPDNS with the latest Flutter-managed domain lists.
+     *
+     * @return No return value.
+     */
+    private fun activateTencentLocked() {
+        if (!tencentCredentialsConfigured()) {
+            effectiveProvider = HttpDnsProvider.NONE
+            statusMessage =
+                "Tencent DNSPod HTTPDNS credentials are missing from this build. " +
+                    "Set TENCENT_HTTPDNS_ID and TENCENT_HTTPDNS_KEY in CI or android/local.properties."
+            return
+        }
+        if (!ensureTencentInitializedLocked(forceRefresh = true)) {
+            return
+        }
+
+        effectiveProvider = HttpDnsProvider.TENCENT
+        if (statusMessage.isNullOrBlank()) {
+            statusMessage = "Tencent DNSPod HTTPDNS is active."
+        }
+    }
+
+    /**
      * Deactivates one provider and clears its runtime configuration when needed.
      *
      * @param provider The provider that should be deactivated.
@@ -166,6 +205,7 @@ class AndroidHttpDnsManager private constructor(
 
             HttpDnsProvider.ALIYUN -> deactivateAliyunLocked()
             HttpDnsProvider.VOLCENGINE -> deactivateVolcengineLocked()
+            HttpDnsProvider.TENCENT -> deactivateTencentLocked()
         }
     }
 
@@ -203,6 +243,20 @@ class AndroidHttpDnsManager private constructor(
         }.onFailure { throwable ->
             Log.w(LOG_TAG, "Unable to clear Volcengine HTTPDNS preload domains", throwable)
         }
+    }
+
+    /**
+     * Deactivates Tencent DNSPod HTTPDNS.
+     *
+     * Tencent's SDK configuration is init-time oriented, so the singleton is kept alive and only
+     * the app-facing provider state is reset here.
+     *
+     * @return No return value.
+     */
+    private fun deactivateTencentLocked() {
+        effectiveProvider = HttpDnsProvider.NONE
+        statusMessage = null
+        lastLookupReport = null
     }
 
     /**
@@ -291,6 +345,45 @@ class AndroidHttpDnsManager private constructor(
     }
 
     /**
+     * Initializes Tencent DNSPod HTTPDNS with the current domain lists.
+     *
+     * @param forceRefresh True when the latest Flutter configuration should rebuild the SDK state.
+     * @return True when the SDK is ready for lookups, otherwise false.
+     */
+    private fun ensureTencentInitializedLocked(forceRefresh: Boolean = false): Boolean {
+        if (tencentInitialized && !forceRefresh) {
+            return true
+        }
+        if (!tencentCredentialsConfigured()) {
+            statusMessage = "Tencent DNSPod HTTPDNS credentials are missing from this build."
+            effectiveProvider = HttpDnsProvider.NONE
+            return false
+        }
+
+        return runCatching {
+            val dnsConfig =
+                DnsConfig.Builder()
+                    .dnsId(BuildConfig.TENCENT_HTTPDNS_ID)
+                    .dnsKey(BuildConfig.TENCENT_HTTPDNS_KEY)
+                    .desHttp()
+                    .logLevel(if (BuildConfig.DEBUG) Log.VERBOSE else Log.ERROR)
+                    .preLookupDomains(*tencentPreloadDomains().toTypedArray())
+                    .persistentCacheDomains(*tencentKeepAliveDomains().toTypedArray())
+                    .timeoutMills(TENCENT_TIMEOUT_MS)
+                    .build()
+            MSDKDnsResolver.getInstance().init(application, dnsConfig)
+            tencentInitialized = true
+            true
+        }.getOrElse { throwable ->
+            effectiveProvider = HttpDnsProvider.NONE
+            statusMessage =
+                "Failed to initialize Tencent DNSPod HTTPDNS. Check credentials, cleartext policy, and SDK configuration."
+            Log.e(LOG_TAG, "Unable to initialize Tencent DNSPod HTTPDNS", throwable)
+            false
+        }
+    }
+
+    /**
      * Applies the keep-alive list to the Aliyun SDK.
      *
      * @return No return value.
@@ -343,6 +436,29 @@ class AndroidHttpDnsManager private constructor(
                 "Volcengine HTTPDNS preload configuration failed. Check the configured domains."
             Log.e(LOG_TAG, "Unable to apply Volcengine HTTPDNS preload domains", throwable)
         }
+    }
+
+    /**
+     * Resolves IPv4 addresses through Tencent DNSPod HTTPDNS.
+     *
+     * @param host The host name that should be resolved through the SDK.
+     * @return A list containing the resolved IPv4 address when available.
+     */
+    private fun resolveTencentIpv4AddressesLocked(host: String): List<String> {
+        val addressPayload = runCatching {
+            MSDKDnsResolver.getInstance().getAddrByName(host)
+        }.getOrElse { throwable ->
+            Log.w(LOG_TAG, "Tencent DNSPod HTTPDNS lookup failed for $host", throwable)
+            null
+        }
+        updateTencentLookupReportLocked(host, addressPayload)
+        val ipv4Address =
+            addressPayload
+                ?.split(';')
+                ?.firstOrNull()
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() && it != TENCENT_EMPTY_ADDRESS }
+        return ipv4Address?.let(::listOf) ?: emptyList()
     }
 
     /**
@@ -481,6 +597,7 @@ class AndroidHttpDnsManager private constructor(
             }.getOrNull().orEmpty()
 
             HttpDnsProvider.VOLCENGINE -> lastLookupReport.orEmpty()
+            HttpDnsProvider.TENCENT -> lastLookupReport.orEmpty()
         }
         lastLookupReport = requestReport.ifBlank { null }
         statusMessage =
@@ -516,6 +633,24 @@ class AndroidHttpDnsManager private constructor(
     }
 
     /**
+     * Updates the cached Tencent DNSPod lookup report for diagnostics.
+     *
+     * @param host The host resolved through Tencent DNSPod.
+     * @param addressPayload The raw "IPv4;IPv6" payload returned by the SDK.
+     * @return No return value.
+     */
+    private fun updateTencentLookupReportLocked(
+        host: String,
+        addressPayload: String?,
+    ) {
+        if (addressPayload.isNullOrBlank()) {
+            lastLookupReport = null
+            return
+        }
+        lastLookupReport = "host=$host, payload=$addressPayload"
+    }
+
+    /**
      * Parses the configured Volcengine DoH domain list.
      *
      * @return A de-duplicated list of configured DoH domains.
@@ -529,6 +664,24 @@ class AndroidHttpDnsManager private constructor(
             .let(::ArrayList)
 
     /**
+     * Builds the Tencent DNSPod pre-lookup domain list.
+     *
+     * @return Up to the Tencent SDK limit of preloaded domains.
+     */
+    private fun tencentPreloadDomains(): List<String> =
+        preloadDomains
+            .take(MAX_TENCENT_PRELOAD_DOMAINS)
+
+    /**
+     * Builds the Tencent DNSPod persistent-cache domain list.
+     *
+     * @return Up to the Tencent SDK limit of persistent-cache domains.
+     */
+    private fun tencentKeepAliveDomains(): List<String> =
+        keepAliveDomains
+            .take(MAX_TENCENT_KEEP_ALIVE_DOMAINS)
+
+    /**
      * Checks whether the current build contains all required credentials for the selected provider.
      *
      * @return True when the selected provider is ready to initialize, otherwise false.
@@ -538,6 +691,7 @@ class AndroidHttpDnsManager private constructor(
             HttpDnsProvider.NONE -> true
             HttpDnsProvider.ALIYUN -> aliyunCredentialsConfigured()
             HttpDnsProvider.VOLCENGINE -> volcengineCredentialsConfigured()
+            HttpDnsProvider.TENCENT -> tencentCredentialsConfigured()
         }
 
     /**
@@ -555,6 +709,14 @@ class AndroidHttpDnsManager private constructor(
      */
     private fun volcengineCredentialsConfigured(): Boolean =
         BuildConfig.VE_HTTPDNS_CREDENTIALS_CONFIGURED
+
+    /**
+     * Checks whether the current build contains all required Tencent DNSPod credentials.
+     *
+     * @return True when the build is ready to initialize Tencent DNSPod HTTPDNS.
+     */
+    private fun tencentCredentialsConfigured(): Boolean =
+        BuildConfig.TENCENT_HTTPDNS_CREDENTIALS_CONFIGURED
 
     /**
      * Builds the status payload shared back to Flutter.
@@ -577,6 +739,10 @@ class AndroidHttpDnsManager private constructor(
         private const val ALIYUN_TIMEOUT_MS = 3000
         private const val ALIYUN_TIMEOUT_SECONDS = 3
         private const val MAX_VOLCENGINE_PRELOAD_DOMAINS = 10
+        private const val MAX_TENCENT_KEEP_ALIVE_DOMAINS = 8
+        private const val MAX_TENCENT_PRELOAD_DOMAINS = 8
+        private const val TENCENT_EMPTY_ADDRESS = "0"
+        private const val TENCENT_TIMEOUT_MS = 2000
 
         @Volatile
         private var instance: AndroidHttpDnsManager? = null
@@ -606,4 +772,5 @@ private val HttpDnsProvider.displayName: String
         HttpDnsProvider.NONE -> "HTTPDNS"
         HttpDnsProvider.ALIYUN -> "Aliyun HTTPDNS"
         HttpDnsProvider.VOLCENGINE -> "Volcengine HTTPDNS"
+        HttpDnsProvider.TENCENT -> "Tencent DNSPod HTTPDNS"
     }

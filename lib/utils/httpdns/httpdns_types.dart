@@ -2,7 +2,8 @@
 enum HttpDnsProvider {
   none('none', 'Disabled'),
   aliyun('aliyun', 'Aliyun HTTPDNS'),
-  volcengine('volcengine', 'Volcengine HTTPDNS');
+  volcengine('volcengine', 'Volcengine HTTPDNS'),
+  tencent('tencent', 'TencentCloud DNSPod HTTPDNS');
 
   final String storageValue;
   final String displayName;

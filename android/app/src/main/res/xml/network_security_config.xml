@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        Tencent HTTPDNS desHttp() uses cleartext HTTP requests to fixed service IPs.
+        Keep cleartext scope narrow so normal app traffic stays on the platform default policy.
+    -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">43.132.43.43</domain>
+        <domain includeSubdomains="false">43.132.55.55</domain>
+    </domain-config>
+</network-security-config>

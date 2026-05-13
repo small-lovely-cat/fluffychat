@@ -87,11 +87,13 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4") // For flutter_local_notifications // Workaround for: https://github.com/MaikuB/flutter_local_notifications/issues/2286
     implementation("androidx.core:core-ktx:1.17.0") // For Android Auto
     implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.room:room-rxjava2:2.2.0")
     implementation("com.alibaba.pdns:alidns-android-sdk:2.3.0")
     implementation("com.bytedance.frameworks.baselib:httpdns:1.0.23")
     implementation("com.google.code.gson:gson:2.8.5")
     implementation("com.github.Tencent.soter:soter-wrapper:2.0.7")
     implementation("com.tencent:mmkv:2.4.0")
+    implementation("io.github.dnspod:httpdns-sdk:4.4.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }
 
@@ -179,6 +181,13 @@ android {
     val veHttpDnsCredentialsConfigured =
         veHttpDnsAccountId.isNotBlank() &&
             veHttpDnsSecretKey.isNotBlank()
+    val tencentHttpDnsId =
+        readBuildSecret("TENCENT_HTTPDNS_ID", localBuildProperties)
+    val tencentHttpDnsKey =
+        readBuildSecret("TENCENT_HTTPDNS_KEY", localBuildProperties)
+    val tencentHttpDnsCredentialsConfigured =
+        tencentHttpDnsId.isNotBlank() &&
+            tencentHttpDnsKey.isNotBlank()
 
     defaultConfig {
         applicationId = "chat.fluffy.fluffychat"
@@ -235,6 +244,21 @@ android {
             "boolean",
             "VE_HTTPDNS_CREDENTIALS_CONFIGURED",
             veHttpDnsCredentialsConfigured.toString(),
+        )
+        buildConfigField(
+            "String",
+            "TENCENT_HTTPDNS_ID",
+            asBuildConfigString(tencentHttpDnsId),
+        )
+        buildConfigField(
+            "String",
+            "TENCENT_HTTPDNS_KEY",
+            asBuildConfigString(tencentHttpDnsKey),
+        )
+        buildConfigField(
+            "boolean",
+            "TENCENT_HTTPDNS_CREDENTIALS_CONFIGURED",
+            tencentHttpDnsCredentialsConfigured.toString(),
         )
         ndk { // Workaround for https://github.com/flutter/flutter/issues/162153#issuecomment-2612443642
             // WCDB Android 迁移当前仅保留 arm64-v8a，按需求不再兼容其他 ABI。
