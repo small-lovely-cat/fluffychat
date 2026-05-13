@@ -18,13 +18,16 @@ class ChatEmojiPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final mediaQuery = MediaQuery.of(context);
+    final availableHeight =
+        mediaQuery.size.height - mediaQuery.viewInsets.bottom;
     return AnimatedContainer(
       duration: FluffyThemes.animationDuration,
       curve: FluffyThemes.animationCurve,
       clipBehavior: Clip.hardEdge,
       decoration: const BoxDecoration(),
       height: controller.showEmojiPicker
-          ? MediaQuery.sizeOf(context).height / 2
+          ? availableHeight / 2
           : 0,
       child: controller.showEmojiPicker
           ? DefaultTabController(
