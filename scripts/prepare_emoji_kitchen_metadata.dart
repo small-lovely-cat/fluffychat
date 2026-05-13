@@ -3,7 +3,6 @@ import 'dart:io';
 
 const String _outputPath = 'assets/emoji_kitchen/metadata.json';
 const List<String> _defaultMetadataUrls = <String>[
-  'https://cdn.jsdelivr.net/gh/xsalazar/emoji-kitchen-backend@main/app/metadata.json',
   'https://raw.githubusercontent.com/xsalazar/emoji-kitchen-backend/main/app/metadata.json',
 ];
 
