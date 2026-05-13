@@ -69,6 +69,8 @@ jobs:
       VE_HTTPDNS_APP_ID: ${{ secrets.VE_HTTPDNS_APP_ID }}
       VE_HTTPDNS_DOH_DOMAINS: ${{ secrets.VE_HTTPDNS_DOH_DOMAINS }}
       VE_HTTPDNS_USE_DOH: ${{ secrets.VE_HTTPDNS_USE_DOH }}
+      TENCENT_HTTPDNS_ID: ${{ secrets.TENCENT_HTTPDNS_ID }}
+      TENCENT_HTTPDNS_KEY: ${{ secrets.TENCENT_HTTPDNS_KEY }}
     environment:
       name: android-build
       deployment: false
