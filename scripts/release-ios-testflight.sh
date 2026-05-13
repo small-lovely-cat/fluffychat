@@ -1,6 +1,7 @@
 #!/bin/sh -ve
 flutter clean
 flutter pub get
+dart run scripts/prepare_emoji_kitchen_metadata.dart
 cd ios
 rm -rf Pods
 rm -f Podfile.lock

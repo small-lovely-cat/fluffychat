@@ -34,12 +34,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:matrix/matrix.dart';
 import 'package:mime/mime.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 
 import '../../utils/account_bundles.dart';
+import '../../utils/emoji/emoji_kitchen_service.dart';
 import '../../utils/localized_exception_extension.dart';
 import 'send_file_dialog.dart';
 import 'send_location_dialog.dart';
@@ -665,6 +667,85 @@ class ChatController extends State<ChatPageWithRoom>
         threadLastEventId: threadLastEventId,
       ),
     );
+  }
+
+  /// 发送 Emoji Kitchen 合成后的图片消息。
+  ///
+  /// - Parameters:
+  ///   - combination: 当前选中的 Emoji Kitchen 组合图信息。
+  /// - Returns: 无返回值。
+  /// - Throws: 当图片下载失败或消息发送失败时抛出异常。
+  Future<void> sendEmojiKitchenCombination(
+    EmojiKitchenCombination combination,
+  ) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final l10n = L10n.of(context);
+
+    try {
+      if (!room.otherPartyCanReceiveMessages) {
+        throw OtherPartyCanNotReceiveMessages();
+      }
+
+      scaffoldMessenger
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            duration: const Duration(minutes: 5),
+            dismissDirection: DismissDirection.none,
+            content: Row(
+              children: [
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                ),
+                const SizedBox(width: 16),
+                Text(l10n.sendingAttachment),
+              ],
+            ),
+          ),
+        );
+
+      final response = await http.get(Uri.parse(combination.gStaticUrl));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(
+          'Failed to download Emoji Kitchen image: ${response.statusCode}',
+        );
+      }
+
+      final file = MatrixImageFile(
+        bytes: response.bodyBytes,
+        name: EmojiKitchenService.buildFileName(combination.alt),
+        mimeType: 'image/png',
+      );
+
+      await room.sendFileEvent(
+        file,
+        threadRootEventId: activeThreadId,
+        threadLastEventId: threadLastEventId,
+        extraContent: {'body': combination.alt},
+      );
+
+      scaffoldMessenger.clearSnackBars();
+      hideEmojiPicker();
+    } catch (e) {
+      scaffoldMessenger.clearSnackBars();
+      if (!mounted) rethrow;
+      final theme = Theme.of(context);
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          backgroundColor: theme.colorScheme.errorContainer,
+          closeIconColor: theme.colorScheme.onErrorContainer,
+          content: Text(
+            e.toLocalizedString(context),
+            style: TextStyle(color: theme.colorScheme.onErrorContainer),
+          ),
+          duration: const Duration(seconds: 30),
+          showCloseIcon: true,
+        ),
+      );
+      rethrow;
+    }
   }
 
   Future<void> openCameraAction() async {

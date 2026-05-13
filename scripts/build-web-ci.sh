@@ -13,6 +13,7 @@ if [[ -n "${WEB_BUILD_CONFIG_JSON:-}" ]]; then
 fi
 
 ./scripts/prepare-web.sh
+dart run scripts/prepare_emoji_kitchen_metadata.dart
 
 build_args=(
   --release

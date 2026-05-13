@@ -7,6 +7,7 @@ SCHEME="${SCHEME:-Runner}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 
 flutter pub get
+dart run scripts/prepare_emoji_kitchen_metadata.dart
 flutter build macos --config-only --release
 pod install --project-directory=macos
 

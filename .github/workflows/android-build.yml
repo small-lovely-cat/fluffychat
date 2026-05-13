@@ -142,6 +142,9 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Prepare Emoji Kitchen metadata
+        run: dart run scripts/prepare_emoji_kitchen_metadata.dart
+
       - name: Prepare release signing
         id: signing
         if: steps.params.outputs.build_mode == 'release'

@@ -27,6 +27,7 @@ FLUFFYCHAT_ORIG_TEAM="4NXF6Z997G"
 }
 
 ### Make release build ###
+dart run scripts/prepare_emoji_kitchen_metadata.dart
 flutter build macos --release
 
 echo "Build build/macos/Build/Products/Release/FluffyChat.app"

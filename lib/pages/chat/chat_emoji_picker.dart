@@ -2,6 +2,7 @@ import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:fluffychat/config/emoji_font.dart';
 import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
+import 'package:fluffychat/pages/chat/chat_mixed_emoji_picker.dart';
 import 'package:fluffychat/pages/chat/sticker_picker_dialog.dart';
 import 'package:fluffychat/utils/emoji/latest_emoji_locale.dart';
 import 'package:fluffychat/utils/emoji/platform_emoji_picker.dart';
@@ -27,12 +28,13 @@ class ChatEmojiPicker extends StatelessWidget {
           : 0,
       child: controller.showEmojiPicker
           ? DefaultTabController(
-              length: 2,
+              length: 3,
               child: Column(
                 children: [
                   TabBar(
                     tabs: [
                       Tab(text: L10n.of(context).emojis),
+                      const Tab(text: 'Mixed'),
                       Tab(text: L10n.of(context).stickers),
                     ],
                   ),
@@ -74,6 +76,7 @@ class ChatEmojiPicker extends StatelessWidget {
                             ),
                           ),
                         ),
+                        ChatMixedEmojiPicker(controller: controller),
                         StickerPickerDialog(
                           room: controller.room,
                           onSelected: (sticker) {
