@@ -31,6 +31,7 @@ class AppLockAuthChannel private constructor(
     flutterEngine: FlutterEngine,
 ) : MethodChannel.MethodCallHandler {
     private val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NAME)
+    private val soterPromptController = SoterBiometricPromptController(activity)
     private var pendingResult: MethodChannel.Result? = null
     private val soterCapabilityLock = Any()
     @Volatile
@@ -167,7 +168,7 @@ class AppLockAuthChannel private constructor(
             return
         }
         when (call.argument<String>("method")) {
-            METHOD_SOTER -> authenticateWithSoter()
+            METHOD_SOTER -> authenticateWithSoter(promptTextFrom(call))
             METHOD_SYSTEM_BIOMETRIC -> authenticateWithSystemBiometric(call)
             else -> finishPending(
                 failurePayload(
@@ -242,8 +243,11 @@ class AppLockAuthChannel private constructor(
         }
     }
 
-    private fun authenticateWithSoter() {
-        logInfo("authenticateWithSoter requested")
+    private fun authenticateWithSoter(promptText: SoterPromptText) {
+        logInfo(
+            "authenticateWithSoter requested title=${promptText.title} " +
+                "subtitle=${promptText.subtitle}",
+        )
         ensureSoterInitialized(forceReinitialize = false) { initialized, initMessage ->
             val soterAvailable = isSoterAvailable()
             logInfo(
@@ -257,7 +261,7 @@ class AppLockAuthChannel private constructor(
                             "success=$success message=$message",
                     )
                     if (success) {
-                        requestSoterAuthentication(allowRetry = false)
+                        requestSoterAuthentication(promptText = promptText, allowRetry = false)
                     } else {
                         finishPending(
                             failurePayload(
@@ -270,13 +274,22 @@ class AppLockAuthChannel private constructor(
                 }
                 return@ensureSoterInitialized
             }
-            requestSoterAuthentication(allowRetry = true)
+            requestSoterAuthentication(promptText = promptText, allowRetry = true)
         }
     }
 
-    private fun requestSoterAuthentication(allowRetry: Boolean) {
+    private fun requestSoterAuthentication(promptText: SoterPromptText, allowRetry: Boolean) {
         logInfo("requestSoterAuthentication start allowRetry=$allowRetry")
         val canceller = SoterBiometricCanceller()
+        soterPromptController.show(promptText) {
+            logInfo("soter prompt cancel requested by user")
+            soterPromptController.hide()
+            runCatching {
+                canceller.asyncCancelBiometricAuthentication()
+            }.onFailure { throwable ->
+                logWarn("soter prompt cancel failed: ${throwable.message}")
+            }
+        }
 
         runCatching {
             SoterWrapperApi.ensureConnection()
@@ -296,6 +309,7 @@ class AppLockAuthChannel private constructor(
                     object : SoterBiometricStateCallback {
                         override fun onStartAuthentication() {
                             logInfo("soter biometric callback onStartAuthentication")
+                            soterPromptController.updateMessage(promptText.subtitle)
                         }
 
                         override fun onAuthenticationHelp(
@@ -306,10 +320,12 @@ class AppLockAuthChannel private constructor(
                                 "soter biometric callback onAuthenticationHelp " +
                                     "helpCode=$helpCode helpString=$helpString",
                             )
+                            soterPromptController.updateMessage(helpString)
                         }
 
                         override fun onAuthenticationSucceed() {
                             logInfo("soter biometric callback onAuthenticationSucceed")
+                            soterPromptController.hide()
                         }
 
                         override fun onAuthenticationFailed() {
@@ -318,6 +334,7 @@ class AppLockAuthChannel private constructor(
 
                         override fun onAuthenticationCancelled() {
                             logInfo("soter biometric callback onAuthenticationCancelled")
+                            soterPromptController.hide()
                         }
 
                         override fun onAuthenticationError(
@@ -328,12 +345,14 @@ class AppLockAuthChannel private constructor(
                                 "soter biometric callback onAuthenticationError " +
                                     "errorCode=$errorCode errorString=$errorString",
                             )
+                            soterPromptController.updateMessage(errorString, isError = true)
                         }
                     },
                 )
                 .build()
         } catch (throwable: Throwable) {
             logError("requestSoterAuthentication failed to build AuthenticationParam", throwable)
+            soterPromptController.hide()
             finishPending(
                 failurePayload(
                     errorCode = "soter_auth_param_failed",
@@ -353,11 +372,13 @@ class AppLockAuthChannel private constructor(
                                 "errCode=${result.errCode} errMsg=${result.errMsg}",
                         )
                         if (result.isSuccess()) {
+                            soterPromptController.hide()
                             finishPending(successPayload())
                             return
                         }
 
                         if (allowRetry && result.errCode in RECOVERABLE_SOTER_ERRORS) {
+                            soterPromptController.hide()
                             logWarn(
                                 "soter auth retrying after recoverable error " +
                                     "errCode=${result.errCode} errMsg=${result.errMsg}",
@@ -368,7 +389,7 @@ class AppLockAuthChannel private constructor(
                                         "message=$message",
                                 )
                                 if (success) {
-                                    requestSoterAuthentication(allowRetry = false)
+                                    requestSoterAuthentication(promptText = promptText, allowRetry = false)
                                 } else {
                                     finishPending(
                                         failurePayload(
@@ -382,6 +403,7 @@ class AppLockAuthChannel private constructor(
                             return
                         }
 
+                        soterPromptController.hide()
                         finishPending(
                             failurePayload(
                                 errorCode = "soter_auth_${result.errCode}",
@@ -396,6 +418,7 @@ class AppLockAuthChannel private constructor(
             )
         }.onFailure { throwable ->
             logError("requestSoterAuthentication failed to start", throwable)
+            soterPromptController.hide()
             finishPending(
                 failurePayload(
                     errorCode = "soter_auth_request_failed",
@@ -644,6 +667,20 @@ class AppLockAuthChannel private constructor(
         return true
     }
 
+    /**
+     * 从 Flutter MethodCall 中提取 Soter 指纹弹窗文案。
+     *
+     * @param call Flutter 侧传入的认证参数
+     * @return Soter 原生底部弹窗使用的标题、副标题和取消按钮文案
+     */
+    private fun promptTextFrom(call: MethodCall): SoterPromptText {
+        return SoterPromptText(
+            title = call.argument<String>("title") ?: "Unlock app",
+            subtitle = call.argument<String>("subtitle") ?: "Use biometric authentication",
+            negativeButton = call.argument<String>("negativeButton") ?: "Use PIN",
+        )
+    }
+
     private fun finishPending(payload: Map<String, Any?>) {
         val result = pendingResult ?: return
         pendingResult = null
@@ -737,6 +774,7 @@ class AppLockAuthChannel private constructor(
                 instance = AppLockAuthChannel(activity, flutterEngine)
             } else {
                 current.activity = activity
+                current.soterPromptController.updateActivity(activity)
                 current.warmUpSoterCapability()
             }
         }

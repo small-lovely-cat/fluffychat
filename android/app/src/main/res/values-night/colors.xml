@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="soter_prompt_surface">#FF1D2230</color>
+    <color name="soter_prompt_primary_text">#FFF4F6FB</color>
+    <color name="soter_prompt_secondary_text">#FFB6C0D9</color>
+    <color name="soter_prompt_action_text">#FFD0D9FF</color>
+    <color name="soter_prompt_handle">#FF66708A</color>
+    <color name="soter_prompt_button_background">#FF2B3346</color>
+    <color name="soter_prompt_button_pressed">#FF37405A</color>
+    <color name="soter_prompt_app_icon_background">#FF262D3D</color>
+    <color name="soter_prompt_fingerprint_tint">#FF9DA8C5</color>
+    <color name="soter_prompt_error_text">#FFFF8E8E</color>
+</resources>

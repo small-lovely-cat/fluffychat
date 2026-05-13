@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom"
+    android:background="@drawable/bg_soter_prompt_sheet"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="14dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="24dp">
+
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_soter_prompt_handle" />
+
+    <ImageButton
+        android:id="@+id/soterPromptCloseButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="end"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@null"
+        android:padding="8dp"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        android:tint="@color/soter_prompt_secondary_text" />
+
+    <ImageView
+        android:id="@+id/soterPromptAppIcon"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/bg_soter_prompt_app_icon"
+        android:padding="10dp"
+        android:scaleType="centerInside" />
+
+    <TextView
+        android:id="@+id/soterPromptAppName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textColor="@color/soter_prompt_secondary_text"
+        android:textSize="16sp" />
+
+    <TextView
+        android:id="@+id/soterPromptTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:fontFamily="sans-serif-medium"
+        android:textColor="@color/soter_prompt_primary_text"
+        android:textSize="34sp" />
+
+    <TextView
+        android:id="@+id/soterPromptSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:textColor="@color/soter_prompt_secondary_text"
+        android:textSize="18sp" />
+
+    <ImageView
+        android:id="@+id/soterPromptFingerprintIcon"
+        android:layout_width="88dp"
+        android:layout_height="88dp"
+        android:layout_marginTop="34dp"
+        android:contentDescription="@null"
+        android:src="@drawable/fingerprint_dialog_fp_icon"
+        android:tint="@color/soter_prompt_fingerprint_tint" />
+
+    <TextView
+        android:id="@+id/soterPromptNegativeButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="36dp"
+        android:background="@drawable/bg_soter_prompt_button"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="center"
+        android:minHeight="54dp"
+        android:paddingStart="16dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="14dp"
+        android:textColor="@color/soter_prompt_action_text"
+        android:textSize="18sp" />
+
+</LinearLayout>
