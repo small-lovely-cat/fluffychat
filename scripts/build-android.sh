@@ -7,10 +7,18 @@ cd "${REPO_ROOT}"
 
 source "${SCRIPT_DIR}/lib/flutter_build_env.sh"
 
+if [[ $# -lt 1 ]]; then
+  echo "Usage: bash ./scripts/build-android.sh <apk|appbundle> [flutter build args...]" >&2
+  exit 1
+fi
+
+build_target="$1"
+shift
+
 if [[ "${FLUFFYCHAT_SKIP_PUB_GET:-false}" != "true" ]]; then
   flutter pub get
 fi
 dart run scripts/prepare_emoji_kitchen_metadata.dart
 
 collect_fluffychat_flutter_build_args
-flutter build "${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}" "$@"
+flutter build "${build_target}" "${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}" "$@"
