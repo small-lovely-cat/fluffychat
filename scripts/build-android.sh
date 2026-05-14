@@ -21,4 +21,4 @@ fi
 dart run scripts/prepare_emoji_kitchen_metadata.dart
 
 collect_fluffychat_flutter_build_args
-flutter build "${build_target}" "${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}" "$@"
+run_fluffychat_flutter_build "${build_target}" "$@"

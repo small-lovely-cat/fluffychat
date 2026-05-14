@@ -40,7 +40,9 @@ if [[ -n "${WEB_BUILD_DART_DEFINES:-}" ]]; then
 fi
 
 collect_fluffychat_flutter_build_args
-build_args+=("${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}")
+if [[ ${#FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]} -gt 0 ]]; then
+  build_args+=("${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}")
+fi
 
 if [[ -n "${WEB_BUILD_EXTRA_ARGS:-}" ]]; then
   read -r -a extra_args <<< "${WEB_BUILD_EXTRA_ARGS}"

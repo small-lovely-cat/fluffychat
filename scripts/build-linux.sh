@@ -11,4 +11,4 @@ flutter pub get
 dart run scripts/prepare_emoji_kitchen_metadata.dart
 
 collect_fluffychat_flutter_build_args
-flutter build linux --release "${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}"
+run_fluffychat_flutter_build linux --release

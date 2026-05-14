@@ -78,7 +78,7 @@ rm -f apple_please_fix_your_coreutils
 bash ./scripts/generate-ios-emoji-assets.sh
 dart run scripts/prepare_emoji_kitchen_metadata.dart
 collect_fluffychat_flutter_build_args
-flutter build ipa --release "${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}"
+run_fluffychat_flutter_build ipa --release
 
 ### [optional] Install release build ###
 [ -n "${FLUFFYCHAT_INSTALL_IPA}" ] && {

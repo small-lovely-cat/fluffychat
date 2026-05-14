@@ -41,6 +41,6 @@ FLUFFYCHAT_INSTALL_IPA="${FLUFFYCHAT_INSTALL_IPA:-}"
 ### Make release build ###
 dart run scripts/prepare_emoji_kitchen_metadata.dart
 collect_fluffychat_flutter_build_args
-flutter build macos --release "${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}"
+run_fluffychat_flutter_build macos --release
 
 echo "Build build/macos/Build/Products/Release/FluffyChat.app"

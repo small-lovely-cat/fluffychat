@@ -40,7 +40,7 @@ flutter pub get
 bash ./scripts/generate-ios-emoji-assets.sh
 dart run scripts/prepare_emoji_kitchen_metadata.dart
 collect_fluffychat_flutter_build_args
-flutter build ios --release --no-codesign "${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}"
+run_fluffychat_flutter_build ios --release --no-codesign
 
 app_path="${REPO_ROOT}/build/ios/iphoneos/Runner.app"
 if [[ ! -d "${app_path}" ]]; then

@@ -15,7 +15,7 @@ CONFIGURATION="${CONFIGURATION:-Release}"
 flutter pub get
 dart run scripts/prepare_emoji_kitchen_metadata.dart
 collect_fluffychat_flutter_build_args
-flutter build macos --config-only --release "${FLUFFYCHAT_FLUTTER_BUILD_ARGS[@]}"
+run_fluffychat_flutter_build macos --config-only --release
 pod install --project-directory=macos
 
 # GitHub-hosted runners don't carry this project's Apple signing setup,
