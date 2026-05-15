@@ -1,3 +1,5 @@
 <automotiveApp>
-    <uses name="notification" />
+    <!-- Android Auto integration disabled.
+         Keep this file as a valid placeholder so resource merges stay stable
+         if the manifest entry is re-enabled in the future. -->
 </automotiveApp>

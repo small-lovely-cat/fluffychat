@@ -85,7 +85,7 @@ plugins {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4") // For flutter_local_notifications // Workaround for: https://github.com/MaikuB/flutter_local_notifications/issues/2286
-    implementation("androidx.core:core-ktx:1.17.0") // For Android Auto
+    implementation("androidx.core:core-ktx:1.17.0") // For ContextCompat and other AndroidX core helpers
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.room:room-rxjava2:2.2.0")
     implementation("com.alibaba.pdns:alidns-android-sdk:2.3.0")
