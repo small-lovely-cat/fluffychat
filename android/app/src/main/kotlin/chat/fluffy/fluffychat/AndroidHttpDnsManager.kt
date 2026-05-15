@@ -365,6 +365,7 @@ class AndroidHttpDnsManager private constructor(
                 DnsConfig.Builder()
                     .dnsId(BuildConfig.TENCENT_HTTPDNS_ID)
                     .dnsKey(BuildConfig.TENCENT_HTTPDNS_KEY)
+                    .dnsIp(TENCENT_DES_DNS_IP)
                     .desHttp()
                     .logLevel(if (BuildConfig.DEBUG) Log.VERBOSE else Log.ERROR)
                     .preLookupDomains(*tencentPreloadDomains().toTypedArray())
@@ -742,6 +743,7 @@ class AndroidHttpDnsManager private constructor(
         private const val MAX_TENCENT_KEEP_ALIVE_DOMAINS = 8
         private const val MAX_TENCENT_PRELOAD_DOMAINS = 8
         private const val TENCENT_EMPTY_ADDRESS = "0"
+        private const val TENCENT_DES_DNS_IP = "119.29.29.98"
         private const val TENCENT_TIMEOUT_MS = 2000
 
         @Volatile
