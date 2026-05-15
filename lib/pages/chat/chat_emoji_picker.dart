@@ -79,7 +79,10 @@ class ChatEmojiPicker extends StatelessWidget {
                             ),
                           ),
                         ),
-                        ChatMixedEmojiPicker(controller: controller),
+                        ChatMixedEmojiPicker(
+                          onSendCombination:
+                              controller.sendEmojiKitchenCombination,
+                        ),
                         StickerPickerDialog(
                           room: controller.room,
                           onSelected: (sticker) {

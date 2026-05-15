@@ -6,8 +6,7 @@ import 'package:fluffychat/utils/emoji/emoji_glyph.dart';
 import 'package:fluffychat/utils/emoji/emoji_kitchen_service.dart';
 import 'package:fluffychat/widgets/matrix.dart';
 import 'package:flutter/material.dart';
-
-import 'chat.dart';
+import 'package:matrix/matrix.dart';
 
 enum _EmojiKitchenSelectionSide { left, right }
 
@@ -15,9 +14,13 @@ const String _emojiKitchenHelpDismissedKey =
     'emoji_kitchen_help_dismissed_v1';
 
 class ChatMixedEmojiPicker extends StatefulWidget {
-  final ChatController controller;
+  final Future<void> Function(EmojiKitchenCombination combination)
+  onSendCombination;
 
-  const ChatMixedEmojiPicker({required this.controller, super.key});
+  const ChatMixedEmojiPicker({
+    required this.onSendCombination,
+    super.key,
+  });
 
   @override
   State<ChatMixedEmojiPicker> createState() => _ChatMixedEmojiPickerState();
@@ -165,7 +168,9 @@ class _ChatMixedEmojiPickerState extends State<ChatMixedEmojiPicker> {
     }
     setState(() => _isSending = true);
     try {
-      await widget.controller.sendEmojiKitchenCombination(combination);
+      await widget.onSendCombination(combination);
+    } catch (error, stackTrace) {
+      Logs().e('Unable to send Emoji Kitchen combination', error, stackTrace);
     } finally {
       if (mounted) {
         setState(() => _isSending = false);
