@@ -36,7 +36,11 @@ class CustomReactionPicker extends StatelessWidget {
       return;
     }
     onReactionSelected();
-    Navigator.of(context).pop(reaction);
+    await event.room.sendReaction(event.eventId, reaction);
+    if (!context.mounted) {
+      return;
+    }
+    Navigator.of(context).pop();
   }
 
   /// 处理 mixed emoji reaction 选择事件。

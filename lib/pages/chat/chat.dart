@@ -1263,8 +1263,12 @@ class ChatController extends State<ChatPageWithRoom>
 
   void onSelectMessage(Event event) {
     if (!event.redacted) {
-      if (selectedEvents.contains(event)) {
-        setState(() => selectedEvents.remove(event));
+      final eventId = event.eventId;
+      final alreadySelected = selectedEvents.any((e) => e.eventId == eventId);
+      if (alreadySelected) {
+        setState(() {
+          selectedEvents.removeWhere((e) => e.eventId == eventId);
+        });
       } else {
         setState(() => selectedEvents.add(event));
       }
