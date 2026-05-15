@@ -320,15 +320,21 @@ class InputBar extends StatelessWidget {
     return const SizedBox.shrink();
   }
 
+  /// 根据当前光标位置插入联想内容，并保留前后未替换文本。
+  ///
+  /// - [suggestion] 当前选中的联想候选项，包含类型和待插入内容。
+  /// - 返回值为替换后的完整输入框文本。
   String insertSuggestion(Map<String, String?> suggestion) {
-    final replaceText = controller!.text.substring(
-      0,
-      controller!.selection.baseOffset,
-    );
+    final textValue = controller!.value;
+    final selection = textValue.selection;
+    final cursorOffset = selection.isValid
+        ? selection.baseOffset.clamp(0, textValue.text.length)
+        : textValue.text.length;
+    final replaceText = textValue.text.substring(0, cursorOffset);
     var startText = '';
-    final afterText = replaceText == controller!.text
+    final afterText = cursorOffset >= textValue.text.length
         ? ''
-        : controller!.text.substring(controller!.selection.baseOffset + 1);
+        : textValue.text.substring(cursorOffset);
     var insertText = '';
     if (suggestion['type'] == 'command') {
       insertText = '${suggestion['name']!} ';
