@@ -1,12 +1,13 @@
-import 'package:fluffychat/config/themes.dart';
 import 'package:fluffychat/l10n/l10n.dart';
 import 'package:fluffychat/pages/chat_list/chat_list.dart';
 import 'package:fluffychat/pages/chat_list/client_chooser_button.dart';
 import 'package:fluffychat/utils/sync_status_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
+import 'package:tdesign_flutter/tdesign_flutter.dart';
 
 import '../../widgets/matrix.dart';
+import '../../widgets/tdesign/tdesign_scope.dart';
 
 class ChatListHeader extends StatelessWidget implements PreferredSizeWidget {
   final ChatListController controller;
@@ -20,17 +21,10 @@ class ChatListHeader extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final client = Matrix.of(context).client;
 
-    return SliverAppBar(
-      floating: true,
-      toolbarHeight: 72,
-      pinned: FluffyThemes.isColumnMode(context),
-      scrolledUnderElevation: 0,
-      backgroundColor: Colors.transparent,
-      automaticallyImplyLeading: false,
-      title: StreamBuilder(
+    return SliverToBoxAdapter(
+      child: StreamBuilder(
         stream: client.onSyncStatus.stream,
         builder: (context, snapshot) {
           final status =
@@ -40,83 +34,88 @@ class ChatListHeader extends StatelessWidget implements PreferredSizeWidget {
               client.onSync.value != null &&
               status.status != SyncStatus.error &&
               client.prevBatch != null;
-          return TextField(
-            controller: controller.searchController,
-            focusNode: controller.searchFocusNode,
-            textInputAction: TextInputAction.search,
-            onChanged: (text) =>
-                controller.onSearchEnter(text, globalSearch: globalSearch),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: theme.colorScheme.secondaryContainer,
-              border: OutlineInputBorder(
-                borderSide: BorderSide.none,
-                borderRadius: BorderRadius.circular(99),
-              ),
-              contentPadding: EdgeInsets.zero,
-              hintText: hide
-                  ? L10n.of(context).searchChatsRooms
-                  : status.calcLocalizedString(context),
-              hintStyle: TextStyle(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.normal,
-              ),
-              prefixIcon: hide
-                  ? controller.isSearchMode
-                        ? IconButton(
-                            tooltip: L10n.of(context).cancel,
-                            icon: const Icon(Icons.close_outlined),
-                            onPressed: controller.cancelSearch,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          )
-                        : IconButton(
-                            onPressed: controller.startSearch,
-                            icon: Icon(
-                              Icons.search_outlined,
-                              color: theme.colorScheme.onPrimaryContainer,
-                            ),
-                          )
-                  : Container(
-                      margin: const EdgeInsets.all(12),
-                      width: 8,
-                      height: 8,
-                      child: Center(
-                        child: CircularProgressIndicator.adaptive(
-                          strokeWidth: 2,
-                          value: status.progress,
+          final theme = Theme.of(context);
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            child: TDesignSectionCard(
+              margin: EdgeInsets.zero,
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          L10n.of(context).chats,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
+                      if (!controller.isSearchMode)
+                        ClientChooserButton(controller),
+                      if (controller.isSearchMode && globalSearch)
+                        TButton(
+                          text: controller.isSearching
+                              ? '...'
+                              : controller.searchServer ??
+                                    Matrix.of(context).client.homeserver!.host,
+                          type: TButtonType.text,
+                          icon: TIcons.edit_1,
+                          onTap: controller.isSearching
+                              ? null
+                              : controller.setServer,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TSearchBar(
+                    controller: controller.searchController,
+                    focusNode: controller.searchFocusNode,
+                    mediumStyle: true,
+                    autoHeight: true,
+                    backgroundColor: Colors.transparent,
+                    placeHolder: hide
+                        ? L10n.of(context).searchChatsRooms
+                        : status.calcLocalizedString(context),
+                    action: controller.isSearchMode
+                        ? L10n.of(context).cancel
+                        : '',
+                    needCancel: controller.isSearchMode,
+                    onActionClick: (_) => controller.cancelSearch(),
+                    onInputClick: controller.startSearch,
+                    onTextChanged: (text) => controller.onSearchEnter(
+                      text,
+                      globalSearch: globalSearch,
                     ),
-              suffixIcon: controller.isSearchMode && globalSearch
-                  ? controller.isSearching
-                        ? const Padding(
-                            padding: EdgeInsets.symmetric(
-                              vertical: 10.0,
-                              horizontal: 12,
-                            ),
-                            child: SizedBox.square(
-                              dimension: 24,
-                              child: CircularProgressIndicator.adaptive(
-                                strokeWidth: 2,
-                              ),
-                            ),
-                          )
-                        : TextButton.icon(
-                            onPressed: controller.setServer,
-                            style: TextButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(99),
-                              ),
-                              textStyle: const TextStyle(fontSize: 12),
-                            ),
-                            icon: const Icon(Icons.edit_outlined, size: 16),
-                            label: Text(
-                              controller.searchServer ??
-                                  Matrix.of(context).client.homeserver!.host,
-                              maxLines: 2,
-                            ),
-                          )
-                  : SizedBox(width: 0, child: ClientChooserButton(controller)),
+                    onSubmitted: (text) => controller.onSearchEnter(
+                      text,
+                      globalSearch: globalSearch,
+                    ),
+                  ),
+                  if (!hide) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        SizedBox.square(
+                          dimension: 12,
+                          child: CircularProgressIndicator.adaptive(
+                            strokeWidth: 2,
+                            value: status.progress,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            status.calcLocalizedString(context),
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
           );
         },

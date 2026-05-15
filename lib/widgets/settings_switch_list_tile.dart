@@ -1,5 +1,6 @@
 import 'package:fluffychat/config/setting_keys.dart';
 import 'package:flutter/material.dart';
+import 'package:tdesign_flutter/tdesign_flutter.dart';
 
 class SettingsSwitchListTile extends StatefulWidget {
   final AppSettings<bool> setting;
@@ -23,15 +24,22 @@ class SettingsSwitchListTileState extends State<SettingsSwitchListTile> {
   @override
   Widget build(BuildContext context) {
     final subtitle = widget.subtitle;
-    return SwitchListTile.adaptive(
-      value: widget.setting.value,
-      title: Text(widget.title),
-      subtitle: subtitle == null ? null : Text(subtitle),
-      onChanged: (bool newValue) async {
-        widget.onChanged?.call(newValue);
-        await widget.setting.setItem(newValue);
-        setState(() {});
-      },
+    return TCell(
+      title: widget.title,
+      description: subtitle,
+      showBottomBorder: true,
+      rightIconWidget: TSwitch(
+        isOn: widget.setting.value,
+        onChanged: (bool newValue) {
+          widget.onChanged?.call(newValue);
+          widget.setting.setItem(newValue).then((_) {
+            if (mounted) {
+              setState(() {});
+            }
+          });
+          return true;
+        },
+      ),
     );
   }
 }

@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../utils/custom_scroll_behaviour.dart';
 import 'matrix.dart';
+import 'tdesign/tdesign_scope.dart';
 
 class FluffyChatApp extends StatelessWidget {
   final Widget? testWidget;
@@ -65,15 +66,17 @@ class FluffyChatApp extends StatelessWidget {
         localizationsDelegates: L10n.localizationsDelegates,
         supportedLocales: L10n.supportedLocales,
         routerConfig: router,
-        builder: (context, child) => AppLockWidget(
-          pincode: pincode,
-          clients: clients,
-          // Need a navigator above the Matrix widget for
-          // displaying dialogs
-          child: Matrix(
+        builder: (context, child) => TDesignScope(
+          child: AppLockWidget(
+            pincode: pincode,
             clients: clients,
-            store: store,
-            child: testWidget ?? child,
+            // Need a navigator above the Matrix widget for
+            // displaying dialogs
+            child: Matrix(
+              clients: clients,
+              store: store,
+              child: testWidget ?? child,
+            ),
           ),
         ),
       ),

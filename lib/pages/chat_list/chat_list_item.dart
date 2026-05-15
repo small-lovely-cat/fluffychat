@@ -7,8 +7,10 @@ import 'package:fluffychat/utils/room_status_extension.dart';
 import 'package:fluffychat/widgets/adaptive_dialogs/show_ok_cancel_alert_dialog.dart';
 import 'package:fluffychat/widgets/future_loading_dialog.dart';
 import 'package:fluffychat/widgets/hover_builder.dart';
+import 'package:fluffychat/widgets/tdesign/tdesign_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
+import 'package:tdesign_flutter/tdesign_flutter.dart';
 
 import '../../config/themes.dart';
 import '../../utils/date_time_extension.dart';
@@ -62,19 +64,16 @@ class ChatListItem extends StatelessWidget {
     final space = this.space;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-      child: Material(
-        borderRadius: BorderRadius.circular(AppConfig.borderRadius),
-        clipBehavior: Clip.hardEdge,
-        color: backgroundColor,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: TDesignSectionCard(
+        margin: EdgeInsets.zero,
         child: FutureBuilder(
           future: room.name.isEmpty ? room.loadHeroUsers() : null,
           builder: (context, _) => HoverBuilder(
-            builder: (context, listTileHovered) => ListTile(
-              visualDensity: const VisualDensity(vertical: -0.5),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-              onLongPress: () => onLongPress?.call(context),
-              leading: HoverBuilder(
+            builder: (context, listTileHovered) => TCell(
+              onLongPress: (_) => onLongPress?.call(context),
+              onClick: (_) => onTap(),
+              imageWidget: HoverBuilder(
                 builder: (context, hovered) => AnimatedScale(
                   duration: FluffyThemes.animationDuration,
                   curve: FluffyThemes.animationCurve,
@@ -163,10 +162,7 @@ class ChatListItem extends StatelessWidget {
                               child: Material(
                                 color: backgroundColor,
                                 borderRadius: BorderRadius.circular(16),
-                                child: const Icon(
-                                  Icons.arrow_drop_down_circle_outlined,
-                                  size: 18,
-                                ),
+                                child: const Icon(TIcons.more, size: 18),
                               ),
                             ),
                           ),
@@ -176,7 +172,7 @@ class ChatListItem extends StatelessWidget {
                   ),
                 ),
               ),
-              title: Row(
+              titleWidget: Row(
                 children: <Widget>[
                   Expanded(
                     child: EmojiAwareText(
@@ -213,27 +209,30 @@ class ChatListItem extends StatelessWidget {
                         color: theme.colorScheme.primary,
                       ),
                     ),
-                  if (!room.isSpace && room.membership != Membership.invite)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4.0),
-                      child: Text(
-                        room.latestEventReceivedTime.localizedTimeShort(
-                          context,
-                        ),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: room.hasNewMessages
-                              ? FontWeight.bold
-                              : null,
-                          color: hasNotifications
-                              ? theme.colorScheme.primary
-                              : null,
-                        ),
-                      ),
-                    ),
                 ],
               ),
-              subtitle: Row(
+              noteWidget: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (!room.isSpace && room.membership != Membership.invite)
+                    Text(
+                      room.latestEventReceivedTime.localizedTimeShort(context),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: room.hasNewMessages
+                            ? FontWeight.bold
+                            : null,
+                        color: hasNotifications
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  UnreadBubble(room: room),
+                ],
+              ),
+              descriptionWidget: Row(
                 crossAxisAlignment: .start,
                 mainAxisAlignment: .center,
                 children: <Widget>[
@@ -360,12 +359,9 @@ class ChatListItem extends StatelessWidget {
                             ),
                           ),
                   ),
-                  const SizedBox(width: 8),
-                  UnreadBubble(room: room),
                 ],
               ),
-              onTap: onTap,
-              trailing: onForget == null
+              rightIconWidget: onForget == null
                   ? room.membership == Membership.invite
                         ? IconButton(
                             tooltip: L10n.of(context).declineInvitation,

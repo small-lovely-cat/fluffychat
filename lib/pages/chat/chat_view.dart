@@ -19,9 +19,11 @@ import 'package:fluffychat/widgets/chat_settings_popup_menu.dart';
 import 'package:fluffychat/widgets/future_loading_dialog.dart';
 import 'package:fluffychat/widgets/matrix.dart';
 import 'package:fluffychat/widgets/mxc_image.dart';
+import 'package:fluffychat/widgets/tdesign/tdesign_scope.dart';
 import 'package:fluffychat/widgets/unread_rooms_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
+import 'package:tdesign_flutter/tdesign_flutter.dart';
 
 import '../../utils/stream_extension.dart';
 import 'chat_emoji_picker.dart';
@@ -293,13 +295,14 @@ class ChatView extends StatelessWidget {
                       controller.selectedEvents.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.only(bottom: 56.0),
-                      child: FloatingActionButton(
-                        onPressed: controller.scrollDown,
-                        heroTag: null,
-                        mini: true,
-                        backgroundColor: theme.colorScheme.surface,
-                        foregroundColor: theme.colorScheme.onSurface,
-                        child: const Icon(Icons.arrow_downward_outlined),
+                      child: TFab(
+                        theme: TFabTheme.light,
+                        size: TFabSize.medium,
+                        icon: Icon(
+                          TIcons.arrow_down,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        onClick: controller.scrollDown,
                       ),
                     )
                   : null,
@@ -343,10 +346,13 @@ class ChatView extends StatelessWidget {
                             Container(
                               margin: EdgeInsets.all(bottomSheetPadding),
                               width: double.infinity,
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.chevron_right),
-                                label: Text(L10n.of(context).enterNewChat),
-                                onPressed: controller.goToNewRoomAction,
+                              child: TButton(
+                                text: L10n.of(context).enterNewChat,
+                                icon: TIcons.chevron_right,
+                                shape: TButtonShape.round,
+                                theme: TButtonTheme.primary,
+                                isBlock: true,
+                                onTap: controller.goToNewRoomAction,
                               ),
                             )
                           else if (controller.room.canSendDefaultMessages &&
@@ -357,39 +363,24 @@ class ChatView extends StatelessWidget {
                                 maxWidth: FluffyThemes.maxTimelineWidth,
                               ),
                               alignment: Alignment.center,
-                              child: Material(
-                                clipBehavior: Clip.hardEdge,
-                                color: controller.selectedEvents.isNotEmpty
-                                    ? theme.colorScheme.tertiaryContainer
-                                    : theme.colorScheme.surfaceContainerHigh,
-                                borderRadius: BorderRadius.circular(32),
+                              child: TDesignSectionCard(
+                                margin: EdgeInsets.zero,
                                 child: controller.room.isAbandonedDMRoom == true
                                     ? Row(
                                         mainAxisAlignment: .spaceEvenly,
                                         children: [
-                                          TextButton.icon(
-                                            style: TextButton.styleFrom(
-                                              padding: const EdgeInsets.all(16),
-                                              foregroundColor:
-                                                  theme.colorScheme.error,
-                                            ),
-                                            icon: const Icon(
-                                              Icons.archive_outlined,
-                                            ),
-                                            onPressed: controller.leaveChat,
-                                            label: Text(L10n.of(context).leave),
+                                          TButton(
+                                            text: L10n.of(context).leave,
+                                            type: TButtonType.text,
+                                            theme: TButtonTheme.danger,
+                                            icon: TIcons.logout,
+                                            onTap: controller.leaveChat,
                                           ),
-                                          TextButton.icon(
-                                            style: TextButton.styleFrom(
-                                              padding: const EdgeInsets.all(16),
-                                            ),
-                                            icon: const Icon(
-                                              Icons.forum_outlined,
-                                            ),
-                                            onPressed: controller.recreateChat,
-                                            label: Text(
-                                              L10n.of(context).reopenChat,
-                                            ),
+                                          TButton(
+                                            text: L10n.of(context).reopenChat,
+                                            type: TButtonType.text,
+                                            icon: TIcons.chat_bubble,
+                                            onTap: controller.recreateChat,
                                           ),
                                         ],
                                       )

@@ -40,28 +40,19 @@ fun sanitizeGeneratedPluginRegistrant(projectDir: File) {
         return
     }
 
-    val invalidPluginBlocks =
-        listOf(
-            """
-    try {
-      flutterEngine.getPlugins().add(new net.jonhanson.flutter_native_splash.FlutterNativeSplashPlugin());
-    } catch (Exception e) {
-      Log.e(TAG, "Error registering plugin flutter_native_splash, net.jonhanson.flutter_native_splash.FlutterNativeSplashPlugin", e);
-    }
-""".trimIndent(),
-            """
-    try {
-      flutterEngine.getPlugins().add(new dev.flutter.plugins.integration_test.IntegrationTestPlugin());
-    } catch (Exception e) {
-      Log.e(TAG, "Error registering plugin integration_test, dev.flutter.plugins.integration_test.IntegrationTestPlugin", e);
-    }
-""".trimIndent(),
-        )
-
     val originalContent = registrantFile.readText()
+    val invalidPluginPatterns =
+        listOf(
+            Regex(
+                """\s*try\s*\{\s*flutterEngine\.getPlugins\(\)\.add\(new net\.jonhanson\.flutter_native_splash\.FlutterNativeSplashPlugin\(\)\);\s*}\s*catch\s*\(Exception e\)\s*\{\s*Log\.e\(TAG, "Error registering plugin flutter_native_splash, net\.jonhanson\.flutter_native_splash\.FlutterNativeSplashPlugin", e\);\s*}\s*""",
+            ),
+            Regex(
+                """\s*try\s*\{\s*flutterEngine\.getPlugins\(\)\.add\(new dev\.flutter\.plugins\.integration_test\.IntegrationTestPlugin\(\)\);\s*}\s*catch\s*\(Exception e\)\s*\{\s*Log\.e\(TAG, "Error registering plugin integration_test, dev\.flutter\.plugins\.integration_test\.IntegrationTestPlugin", e\);\s*}\s*""",
+            ),
+        )
     val sanitizedContent =
-        invalidPluginBlocks.fold(originalContent) { currentContent, invalidBlock ->
-            currentContent.replace("$invalidBlock\n", "")
+        invalidPluginPatterns.fold(originalContent) { currentContent, invalidPattern ->
+            currentContent.replace(invalidPattern, "\n")
         }
 
     if (originalContent != sanitizedContent) {
@@ -104,6 +95,12 @@ tasks.register("sanitizeGeneratedPluginRegistrant") {
 }
 
 tasks.named("preBuild") {
+    dependsOn("sanitizeGeneratedPluginRegistrant")
+}
+
+tasks.matching {
+    it.name == "compileReleaseJavaWithJavac" || it.name == "compileDebugJavaWithJavac"
+}.configureEach {
     dependsOn("sanitizeGeneratedPluginRegistrant")
 }
 

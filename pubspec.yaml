@@ -71,6 +71,8 @@ dependencies:
   slugify: ^2.0.0
   sqflite_common_ffi: ^2.3.7+1
   sqlite3: ^2.9.4
+  tdesign_flutter:
+    path: tdesign-flutter/tdesign-component
   # sqlcipher_flutter_libs: ^0.6.8
   # Android 改为本地 WCDB 适配包，保留原包名以兼容现有 Dart 导入路径。
   sqlcipher_flutter_libs:

@@ -1,0 +1,11 @@
+name: tdesign_flutter
+description: Minimal local TDesign compatibility layer for the experimental TDesign UI branch.
+version: 0.2.7
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.16.0"
+
+dependencies:
+  flutter:
+    sdk: flutter

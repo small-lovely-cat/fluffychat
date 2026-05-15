@@ -44,6 +44,9 @@ class ChatListView extends StatelessWidget {
               excludeFromSemantics: true,
               behavior: HitTestBehavior.translucent,
               child: Scaffold(
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerLowest,
                 body: ChatListViewBody(controller),
                 floatingActionButton:
                     !controller.isSearchMode &&
