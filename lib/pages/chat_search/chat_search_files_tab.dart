@@ -26,82 +26,80 @@ class ChatSearchFilesTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SelectionArea(
-      child: ListView.builder(
-        padding: const EdgeInsets.all(8.0),
-        itemCount: events.length + 1,
-        itemBuilder: (context, i) {
-          if (i == events.length) {
-            return SearchFooter(
-              searchedUntil: searchedUntil,
-              endReached: endReached,
-              isLoading: isLoading,
-              onStartSearch: onStartSearch,
-            );
-          }
-          final event = events[i];
-          final filename =
-              event.content.tryGet<String>('filename') ??
-              event.content.tryGet<String>('body') ??
-              L10n.of(context).unknownEvent('File');
-          final filetype = (filename.contains('.')
-              ? filename.split('.').last.toUpperCase()
-              : event.content
-                        .tryGetMap<String, Object?>('info')
-                        ?.tryGet<String>('mimetype')
-                        ?.toUpperCase() ??
-                    'UNKNOWN');
-          final sizeString = event.sizeString;
-          final prevEvent = i > 0 ? events[i - 1] : null;
-          final sameEnvironment =
-              prevEvent != null &&
-              prevEvent.originServerTs.sameEnvironment(event.originServerTs);
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!sameEnvironment) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(height: 1, color: theme.dividerColor),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(
-                          event.originServerTs.localizedTime(context),
-                          style: theme.textTheme.labelSmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(height: 1, color: theme.dividerColor),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                ],
-                Material(
-                  borderRadius: BorderRadius.circular(AppConfig.borderRadius),
-                  color: theme.colorScheme.onInverseSurface,
-                  clipBehavior: Clip.hardEdge,
-                  child: ListTile(
-                    leading: const Icon(Icons.file_present_outlined),
-                    title: Text(
-                      filename,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text('$sizeString | $filetype'),
-                    onTap: () => event.saveFile(context),
-                  ),
-                ),
-              ],
-            ),
+    return ListView.builder(
+      padding: const EdgeInsets.all(8.0),
+      itemCount: events.length + 1,
+      itemBuilder: (context, i) {
+        if (i == events.length) {
+          return SearchFooter(
+            searchedUntil: searchedUntil,
+            endReached: endReached,
+            isLoading: isLoading,
+            onStartSearch: onStartSearch,
           );
-        },
-      ),
+        }
+        final event = events[i];
+        final filename =
+            event.content.tryGet<String>('filename') ??
+            event.content.tryGet<String>('body') ??
+            L10n.of(context).unknownEvent('File');
+        final filetype = (filename.contains('.')
+            ? filename.split('.').last.toUpperCase()
+            : event.content
+                      .tryGetMap<String, Object?>('info')
+                      ?.tryGet<String>('mimetype')
+                      ?.toUpperCase() ??
+                  'UNKNOWN');
+        final sizeString = event.sizeString;
+        final prevEvent = i > 0 ? events[i - 1] : null;
+        final sameEnvironment =
+            prevEvent != null &&
+            prevEvent.originServerTs.sameEnvironment(event.originServerTs);
+        return Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!sameEnvironment) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(height: 1, color: theme.dividerColor),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        event.originServerTs.localizedTime(context),
+                        style: theme.textTheme.labelSmall,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Expanded(
+                      child: Container(height: 1, color: theme.dividerColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+              ],
+              Material(
+                borderRadius: BorderRadius.circular(AppConfig.borderRadius),
+                color: theme.colorScheme.onInverseSurface,
+                clipBehavior: Clip.hardEdge,
+                child: ListTile(
+                  leading: const Icon(Icons.file_present_outlined),
+                  title: Text(
+                    filename,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text('$sizeString | $filetype'),
+                  onTap: () => event.saveFile(context),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

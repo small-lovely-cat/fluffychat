@@ -99,51 +99,53 @@ class ChatEncryptionSettingsView extends StatelessWidget {
                         );
                       }
                       final deviceKeys = snapshot.data!;
-                      return SelectionArea(
-                        child: ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: deviceKeys.length,
-                          itemBuilder: (BuildContext context, int i) => Column(
-                            mainAxisSize: .min,
-                            children: [
-                              if (i == 0 ||
-                                  deviceKeys[i].userId !=
-                                      deviceKeys[i - 1].userId) ...[
-                                const Divider(),
-                                FutureBuilder(
-                                  future: room.client.getUserProfile(
-                                    deviceKeys[i].userId,
-                                  ),
-                                  builder: (context, snapshot) {
-                                    final displayname =
-                                        snapshot.data?.displayname ??
-                                        deviceKeys[i].userId.localpart ??
-                                        deviceKeys[i].userId;
-                                    return ListTile(
-                                      leading: Avatar(
-                                        name: displayname,
-                                        mxContent: snapshot.data?.avatarUrl,
-                                      ),
-                                      title: Text(displayname),
-                                      subtitle: Text(deviceKeys[i].userId),
-                                    );
-                                  },
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: deviceKeys.length,
+                        itemBuilder: (BuildContext context, int i) => Column(
+                          mainAxisSize: .min,
+                          children: [
+                            if (i == 0 ||
+                                deviceKeys[i].userId !=
+                                    deviceKeys[i - 1].userId) ...[
+                              const Divider(),
+                              FutureBuilder(
+                                future: room.client.getUserProfile(
+                                  deviceKeys[i].userId,
                                 ),
-                              ],
-                              ListTile(
-                                leading: Switch.adaptive(
-                                  value: !deviceKeys[i].blocked,
-                                  activeThumbColor: deviceKeys[i].verified
-                                      ? Colors.green
-                                      : Colors.orange,
-                                  onChanged: (_) =>
-                                      controller.toggleDeviceKey(deviceKeys[i]),
-                                ),
-                                title: Row(
+                                builder: (context, snapshot) {
+                                  final displayname =
+                                      snapshot.data?.displayname ??
+                                      deviceKeys[i].userId.localpart ??
+                                      deviceKeys[i].userId;
+                                  return ListTile(
+                                    leading: Avatar(
+                                      name: displayname,
+                                      mxContent: snapshot.data?.avatarUrl,
+                                    ),
+                                    title: Text(displayname),
+                                    subtitle: SelectableText(
+                                      deviceKeys[i].userId,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                            ListTile(
+                              leading: Switch.adaptive(
+                                value: !deviceKeys[i].blocked,
+                                activeThumbColor: deviceKeys[i].verified
+                                    ? Colors.green
+                                    : Colors.orange,
+                                onChanged: (_) =>
+                                    controller.toggleDeviceKey(deviceKeys[i]),
+                              ),
+                              title: SelectableText.rich(
+                                TextSpan(
                                   children: [
-                                    Text(
-                                      deviceKeys[i].verified
+                                    TextSpan(
+                                      text: deviceKeys[i].verified
                                           ? L10n.of(context).verified
                                           : deviceKeys[i].blocked
                                           ? L10n.of(context).blocked
@@ -156,27 +158,26 @@ class ChatEncryptionSettingsView extends StatelessWidget {
                                             : Colors.orange,
                                       ),
                                     ),
-                                    const Text(' | ID: '),
-                                    Text(
-                                      deviceKeys[i].deviceId ??
+                                    const TextSpan(text: ' | ID: '),
+                                    TextSpan(
+                                      text:
+                                          deviceKeys[i].deviceId ??
                                           L10n.of(context).unknownDevice,
                                     ),
                                   ],
                                 ),
-                                subtitle: Text(
-                                  deviceKeys[i].ed25519Key?.beautified ??
-                                      L10n.of(
-                                        context,
-                                      ).unknownEncryptionAlgorithm,
-                                  style: TextStyle(
-                                    fontFamily: 'RobotoMono',
-                                    color: theme.colorScheme.secondary,
-                                    fontSize: 11,
-                                  ),
+                              ),
+                              subtitle: SelectableText(
+                                deviceKeys[i].ed25519Key?.beautified ??
+                                    L10n.of(context).unknownEncryptionAlgorithm,
+                                style: TextStyle(
+                                  fontFamily: 'RobotoMono',
+                                  color: theme.colorScheme.secondary,
+                                  fontSize: 11,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       );
                     },

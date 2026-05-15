@@ -51,33 +51,31 @@ class ChatSearchMessageTab extends StatelessWidget {
       );
     }
 
-    return SelectionArea(
-      child: ListView.separated(
-        itemCount: events.length + 1,
-        separatorBuilder: (context, _) =>
-            Divider(color: theme.dividerColor, height: 1),
-        itemBuilder: (context, i) {
-          if (i == events.length) {
-            return SearchFooter(
-              searchedUntil: searchedUntil,
-              endReached: endReached,
-              isLoading: isLoading,
-              onStartSearch: onStartSearch,
-            );
-          }
-          final event = events[i];
-          final sender = event.senderFromMemoryOrFallback;
-          final displayname = sender.calcDisplayname(
-            i18n: MatrixLocals(L10n.of(context)),
+    return ListView.separated(
+      itemCount: events.length + 1,
+      separatorBuilder: (context, _) =>
+          Divider(color: theme.dividerColor, height: 1),
+      itemBuilder: (context, i) {
+        if (i == events.length) {
+          return SearchFooter(
+            searchedUntil: searchedUntil,
+            endReached: endReached,
+            isLoading: isLoading,
+            onStartSearch: onStartSearch,
           );
-          return _MessageSearchResultListTile(
-            sender: sender,
-            displayname: displayname,
-            event: event,
-            room: room,
-          );
-        },
-      ),
+        }
+        final event = events[i];
+        final sender = event.senderFromMemoryOrFallback;
+        final displayname = sender.calcDisplayname(
+          i18n: MatrixLocals(L10n.of(context)),
+        );
+        return _MessageSearchResultListTile(
+          sender: sender,
+          displayname: displayname,
+          event: event,
+          room: room,
+        );
+      },
     );
   }
 }
