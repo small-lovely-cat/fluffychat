@@ -8,6 +8,7 @@ import 'package:fluffychat/utils/matrix_sdk_extensions/matrix_file_extension.dar
 import 'package:fluffychat/widgets/matrix.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
+import 'package:native_imaging/native_imaging.dart' as native;
 
 class MxcImage extends StatefulWidget {
   final Uri? uri;
@@ -65,6 +66,19 @@ class _MxcImageState extends State<MxcImage> {
         : _imageDataCache[cacheKey] = data;
   }
 
+  Future<Uint8List> _decodeForViewer(Uint8List bytes) async {
+    try {
+      await native.init();
+      final img = await native.Image.loadEncoded(bytes);
+      final jpegBytes = await img.toJpeg(95);
+      img.free();
+      return jpegBytes;
+    } catch (e, s) {
+      Logs().w('Unable to decode image for viewer, using original bytes', e, s);
+      return bytes;
+    }
+  }
+
   Future<void> _load() async {
     if (!mounted) return;
     final client =
@@ -99,8 +113,11 @@ class _MxcImageState extends State<MxcImage> {
       );
       if (data.detectFileType is MatrixImageFile || widget.isThumbnail) {
         if (!mounted) return;
+        final bytes = widget.isThumbnail
+            ? data.bytes
+            : await _decodeForViewer(data.bytes);
         setState(() {
-          _imageData = data.bytes;
+          _imageData = bytes;
         });
         return;
       }
